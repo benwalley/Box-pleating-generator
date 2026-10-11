@@ -1,0 +1,107 @@
+/*
+ * Design tokens. Custom properties inherit into every component's shadow
+ * root, so this file is the one place to retheme the app.
+ *
+ * Concept: a sheet of paper on a green cutting mat. The workspace is the
+ * mat; the chrome around it is quiet and light; amber (the colour of the
+ * ruler markings on a mat) marks selection. Mountain red and valley blue
+ * follow the convention of origami crease-pattern software.
+ */
+:root {
+  /* Chrome */
+  --ink: #1e2422;
+  --ink-2: #4b5551;
+  --ink-3: #7c8580;
+  --line: #d9ddd7;
+  --line-strong: #bfc5be;
+  --panel: #f3f4f0;
+  --surface: #ffffff;
+  --hover: #e8ebe6;
+
+  /* Workspace */
+  --mat: #22433b;
+  --mat-line: #2c5249;
+  --mat-line-major: #365f55;
+  --paper: #fbfaf6;
+  --paper-edge: #1e2422;
+  --grid: #e3e0d6;
+
+  /* Selection and emphasis */
+  --accent: #e2a12b;
+  --accent-soft: #f6e3bb;
+  --accent-ink: #6f4700;
+
+  /* Layout elements */
+  --flap-fill: #e9eef3;
+  --flap-fill-alt: #eef0e7;
+  --river-fill: #cfe0ec;
+  --river-line: #5d8fb3;
+
+  /* Creases: structure view */
+  --c-hinge: #3e6a8a;
+  --c-ridge: #8e4585;
+  --c-axis: #2f7d4f;
+  --c-axial: #b08a2e;
+  --c-conflict: #e0218a;
+
+  /* Creases: mountain/valley view */
+  --c-mountain: #d1342f;
+  --c-valley: #2f5fd0;
+  --c-unassigned: #9aa29d;
+
+  /* Status */
+  --error: #b42318;
+  --error-soft: #fde8e6;
+  --warning: #9a6200;
+  --warning-soft: #fdf1d8;
+  --info: #3e6a8a;
+  --info-soft: #e5eef4;
+  --ok: #2f7d4f;
+
+  /* Type: one family, set on a 4px rhythm */
+  --font: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-md: 13.5px;
+  --fs-lg: 16px;
+  --fs-xl: 19px;
+
+  --radius-sm: 4px;
+  --radius: 7px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  --topbar-h: 52px;
+  --rail-w: 56px;
+  --sidebar-w: 352px;
+
+  --focus: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
