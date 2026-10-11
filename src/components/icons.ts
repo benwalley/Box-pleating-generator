@@ -20,6 +20,7 @@ export const icons = {
   file: icon(svg`<path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/>`),
   layers: icon(svg`<path d="M10 3l7 3.8-7 3.8-7-3.8zM3 10.4l7 3.8 7-3.8M3 13.8l7 3.8 7-3.8"/>`),
   download: icon(svg`<path d="M10 3v10M6 9.5l4 4 4-4M4 16.5h12"/>`),
+  print: icon(svg`<path d="M5.5 7.5v-5h9v5M5.5 14H3V8h14v6h-2.5"/><rect x="5.5" y="11.5" width="9" height="6"/>`),
   upload: icon(svg`<path d="M10 14V4M6 7.5l4-4 4 4M4 16.5h12"/>`),
   chevron: icon(svg`<path d="M6 8l4 4 4-4"/>`),
   error: icon(svg`<circle cx="10" cy="10" r="7"/><path d="M10 6.5v4.2M10 13.3v.2"/>`),

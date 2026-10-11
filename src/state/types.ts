@@ -16,6 +16,7 @@ export type Selection =
 export interface Layers {
   readonly grid: boolean;
   readonly elements: boolean;
+  readonly circles: boolean;
   readonly creases: boolean;
   readonly labels: boolean;
   readonly markers: boolean;
@@ -48,7 +49,7 @@ export const DEFAULT_UI: UiState = {
   selection: null,
   focusPoint: null,
   viewMode: 'structure',
-  layers: { grid: true, elements: true, creases: true, labels: true, markers: true },
+  layers: { grid: true, elements: true, circles: true, creases: true, labels: true, markers: true },
   riverWidth: 2,
   treeLayout: 'scaled',
 };

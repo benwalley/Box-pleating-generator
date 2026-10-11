@@ -105,6 +105,18 @@ export const canvasStyles = css`
     fill: #e2e9d9;
   }
 
+  .flap-circle {
+    fill: none;
+    stroke: #6f8fa6;
+    stroke-width: 1.2px;
+    stroke-dasharray: 5 4;
+    pointer-events: none;
+  }
+  .flap-circle.selected {
+    stroke: var(--accent-ink);
+    stroke-width: 1.8px;
+  }
+
   .ambiguous rect {
     fill: url(#hatch);
   }

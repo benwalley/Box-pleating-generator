@@ -10,6 +10,7 @@ import { EditorController } from '../state/editor.ts';
 import { attachAutosave, loadSavedDesign } from '../state/persistence.ts';
 import type { AppState } from '../state/types.ts';
 import type { BpCanvas } from './bp-canvas.ts';
+import { printCreasePattern } from './canvas/print.ts';
 import './bp-canvas.ts';
 import './bp-checks.ts';
 import './bp-inspector.ts';
@@ -185,6 +186,11 @@ export class BpApp extends LitElement {
       e.preventDefault();
       if (e.shiftKey) ed.redo();
       else ed.undo();
+      return;
+    }
+    if (mod && key === 'p') {
+      e.preventDefault();
+      printCreasePattern(ed.state);
       return;
     }
     if (mod && key === 'y') {

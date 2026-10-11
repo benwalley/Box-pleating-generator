@@ -13,6 +13,7 @@ import type { EditorController } from '../state/editor.ts';
 import type { AppState } from '../state/types.ts';
 import {
   ambiguousLayer,
+  circlesLayer,
   creaseLayer,
   elementsLayer,
   gridLayer,
@@ -257,6 +258,7 @@ export class BpCanvas extends LitElement {
         <g clip-path="url(#paper-clip)">
           ${layers.elements ? elementsLayer(this.state, flapsInError) : nothing}
           ${layers.grid ? gridLayer(design.gridSize) : nothing}
+          ${layers.circles ? circlesLayer(this.state) : nothing}
           ${layers.markers ? ambiguousLayer(analysis) : nothing}
           ${layers.creases ? creaseLayer(analysis, ui.viewMode) : nothing}
         </g>

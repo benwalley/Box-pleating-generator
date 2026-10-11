@@ -4,12 +4,14 @@ import { PRESETS } from '../core/presets.ts';
 import type { EditorController } from '../state/editor.ts';
 import { downloadText, fileNameFor, pickTextFile } from '../state/persistence.ts';
 import type { AppState, LayerId } from '../state/types.ts';
+import { printCreasePattern } from './canvas/print.ts';
 import { icons } from './icons.ts';
 import { controlStyles } from './shared-styles.ts';
 
 const LAYERS: ReadonlyArray<[LayerId, string]> = [
   ['grid', 'Grid'],
   ['elements', 'Flaps and rivers'],
+  ['circles', 'Flap circles'],
   ['creases', 'Creases'],
   ['labels', 'Labels'],
   ['markers', 'Problem markers'],
@@ -180,6 +182,11 @@ export class BpTopbar extends LitElement {
     downloadText(fileNameFor(this.state.design), this.editor.exportJson());
   }
 
+  private print(): void {
+    this.close('file-menu');
+    printCreasePattern(this.state);
+  }
+
   private toast(message: string): void {
     this.dispatchEvent(new CustomEvent('app-toast', { detail: message, bubbles: true, composed: true }));
   }
@@ -197,6 +204,7 @@ export class BpTopbar extends LitElement {
         <button @click=${() => (this.close('file-menu'), this.editor.newDesign())}>New design</button>
         <button @click=${() => this.openFile()}>${icons.upload} Open file…</button>
         <button @click=${() => this.saveFile()}>${icons.download} Save file</button>
+        <button @click=${() => this.print()}>${icons.print} Print crease pattern…</button>
         <hr />
         <div class="group">Examples</div>
         ${PRESETS.map(
@@ -210,6 +218,7 @@ export class BpTopbar extends LitElement {
       <button class="icon quiet" title="Undo (Ctrl+Z)" aria-label="Undo" ?disabled=${!canUndo} @click=${() => this.editor.undo()}>${icons.undo}</button>
       <button class="icon quiet" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" ?disabled=${!canRedo} @click=${() => this.editor.redo()}>${icons.redo}</button>
       <div class="spacer"></div>
+      <button class="icon quiet" title="Print crease pattern (Ctrl+P)" aria-label="Print crease pattern" @click=${() => this.print()}>${icons.print}</button>
       <button
         aria-pressed=${design.symmetry.book}
         title="Book symmetry: mirror left and right (B)"

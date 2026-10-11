@@ -75,23 +75,37 @@ export function elementsLayer(state: AppState, flapsInError: ReadonlySet<string>
   </g>`;
 }
 
+/** The circle each flap claims in circle packing: centred on the tip, radius = flap length. */
+export function circlesLayer(state: AppState): Layer {
+  const sel = state.ui.selection;
+  return svg`<g class="flap-circles">
+    ${repeat(state.design.flaps, (f) => f.id, (f) => {
+      const cls = isSelected(sel, 'flap', f.id) ? 'flap-circle selected' : 'flap-circle';
+      return svg`<circle class=${cls} cx=${f.x} cy=${f.y} r=${f.r}></circle>`;
+    })}
+  </g>`;
+}
+
 export function ambiguousLayer(analysis: Analysis): Layer {
   const cells = analysis.pattern?.ambiguousCells ?? [];
   if (!cells.length) return nothing;
   return svg`<g class="ambiguous">${cells.map((c) => svg`<rect x=${c.x} y=${c.y} width="1" height="1"></rect>`)}</g>`;
 }
 
-function creaseClass(c: Crease, mode: ViewMode): string {
+export function creaseClass(c: Crease, mode: ViewMode): string {
   if (mode === 'mv') return c.mv === 'M' ? 'crease m' : c.mv === 'V' ? 'crease v' : 'crease u';
   if (c.kind === 'axial') return c.elevation === 0 ? 'crease axis' : 'crease axial';
   return `crease ${c.kind}`;
 }
 
-export function creaseLayer(analysis: Analysis, mode: ViewMode): Layer {
-  const lines = analysis.pattern?.lines ?? [];
-  // Draw hinges first so ridges and contours sit on top of them.
+/** Hinges first so ridges and contours sit on top of them. */
+export function sortedCreases(analysis: Analysis): Crease[] {
   const order = { hinge: 0, axial: 1, ridge: 2, conflict: 3 } as const;
-  const sorted = [...lines].sort((a, b) => order[a.kind] - order[b.kind]);
+  return [...(analysis.pattern?.lines ?? [])].sort((a, b) => order[a.kind] - order[b.kind]);
+}
+
+export function creaseLayer(analysis: Analysis, mode: ViewMode): Layer {
+  const sorted = sortedCreases(analysis);
   return svg`<g class="creases">${sorted.map(
     (c) => svg`<line class=${creaseClass(c, mode)} x1=${c.x1} y1=${c.y1} x2=${c.x2} y2=${c.y2}></line>`,
   )}</g>`;
