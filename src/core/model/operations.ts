@@ -12,7 +12,7 @@ import {
   polylineBounds,
   translatePolyline,
 } from '../geometry/polyline.ts';
-import { isSelfMirror, linkMirrors, makeSymmetric as makeSymmetricDesign, mirrorsInPlace } from '../symmetry/book.ts';
+import { flapOnAxis, isSelfMirror, linkMirrors, makeSymmetric as makeSymmetricDesign, mirrorFlap, mirrorsInPlace } from '../symmetry/book.ts';
 import { normalizeDesign, normalizeFlap, normalizeRiver, symmetryAxis, MAX_GRID, MIN_GRID } from './design.ts';
 import { createId } from './ids.ts';
 import type { PortKey } from './ports.ts';
@@ -57,14 +57,13 @@ function withRiverPoints(d: Design, river: River, points: Point[], width = river
 
 export function addFlap(d: Design, x: number, y: number, r = 1, label = ''): AddResult {
   const id = createId('f');
-  const flap = normalizeFlap({ id, x, y, r, label, mirrorId: null }, d.gridSize);
+  const flap = normalizeFlap({ id, x, y, w: 0, h: 0, r, label, mirrorId: null }, d.gridSize);
   if (!d.symmetry.book) return { design: { ...d, flaps: [...d.flaps, flap] }, id };
-  const axis = symmetryAxis(d);
-  if (Math.abs(flap.x - axis) <= EPS) {
+  if (flapOnAxis(flap, d.gridSize)) {
     return { design: { ...d, flaps: [...d.flaps, { ...flap, mirrorId: id }] }, id };
   }
   const partnerId = createId('f');
-  const partner: Flap = { ...flap, id: partnerId, label: '', x: d.gridSize - flap.x, mirrorId: id };
+  const partner: Flap = { ...flap, id: partnerId, label: '', ...mirrorFlap(flap, d.gridSize), mirrorId: id };
   return { design: { ...d, flaps: [...d.flaps, { ...flap, mirrorId: partnerId }, partner] }, id };
 }
 
@@ -72,13 +71,41 @@ export function moveFlap(d: Design, id: Id, x: number, y: number): Design {
   const f = d.flaps.find((q) => q.id === id);
   if (!f) return d;
   const n = d.gridSize;
-  let nx = clamp(Math.round(x), 0, n);
-  const ny = clamp(Math.round(y), 0, n);
+  let nx = clamp(Math.round(x), 0, n - f.w);
+  const ny = clamp(Math.round(y), 0, n - f.h);
   if (d.symmetry.book && isSelfMirror(f)) nx = f.x; // stays on the axis
   if (nx === f.x && ny === f.y) return d;
-  const updates = new Map<Id, Flap>([[id, { ...f, x: nx, y: ny }]]);
+  const moved = { ...f, x: nx, y: ny };
+  const updates = new Map<Id, Flap>([[id, moved]]);
   const partner = d.symmetry.book ? partnerOf(d.flaps, f) : null;
-  if (partner) updates.set(partner.id, { ...partner, x: n - nx, y: ny });
+  if (partner) updates.set(partner.id, { ...partner, ...mirrorFlap(moved, n) });
+  return replaceFlaps(d, updates);
+}
+
+/**
+ * Set a flap's tip rectangle: top-left (x, y), width w and height h. A tip
+ * of 0 x 0 is a point (a square flap); anything wider makes a rectangular
+ * box. A flap on the symmetry axis stays centred on it, so its width changes
+ * in steps that keep (gridSize - w) even.
+ */
+export function setFlapTip(d: Design, id: Id, x: number, y: number, w: number, h: number): Design {
+  const f = d.flaps.find((q) => q.id === id);
+  if (!f) return d;
+  const n = d.gridSize;
+  let nw = clamp(Math.round(w), 0, n);
+  const nh = clamp(Math.round(h), 0, n);
+  let nx = clamp(Math.round(x), 0, n - nw);
+  const ny = clamp(Math.round(y), 0, n - nh);
+  if (d.symmetry.book && isSelfMirror(f)) {
+    if ((n - nw) % 2) nw = clamp(nw + (nw > f.w ? 1 : -1), 0, n);
+    if ((n - nw) % 2) nw = f.w;
+    nx = (n - nw) / 2;
+  }
+  if (nx === f.x && ny === f.y && nw === f.w && nh === f.h) return d;
+  const next = { ...f, x: nx, y: ny, w: nw, h: nh };
+  const updates = new Map<Id, Flap>([[id, next]]);
+  const partner = d.symmetry.book ? partnerOf(d.flaps, f) : null;
+  if (partner) updates.set(partner.id, { ...partner, ...mirrorFlap(next, n) });
   return replaceFlaps(d, updates);
 }
 

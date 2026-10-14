@@ -11,11 +11,17 @@ import type { Design, ElementRef, Flap, River } from '../model/types.ts';
 
 export const isSelfMirror = (e: Flap | River): boolean => e.mirrorId === e.id;
 
-export const mirrorFlap = (f: Flap, gridSize: number): Pick<Flap, 'x' | 'y' | 'r'> => ({
-  x: gridSize - f.x,
+/** The mirror image of a flap's tip and length. A tip from x to x + w mirrors to n - x - w .. n - x. */
+export const mirrorFlap = (f: Flap, gridSize: number): Pick<Flap, 'x' | 'y' | 'w' | 'h' | 'r'> => ({
+  x: gridSize - f.x - f.w,
   y: f.y,
+  w: f.w,
+  h: f.h,
   r: f.r,
 });
+
+/** True when the flap's tip is centred on the axis (so it is its own mirror image). */
+export const flapOnAxis = (f: Flap, gridSize: number): boolean => Math.abs(2 * f.x + f.w - gridSize) <= EPS;
 
 /** True when mirroring the river reproduces it point for point (a river lying along the axis). */
 export function mirrorsInPlace(points: River['points'], gridSize: number): boolean {
@@ -38,17 +44,16 @@ export function linkMirrors(d: Design): Design {
       rivers: d.rivers.map((r) => (r.mirrorId ? { ...r, mirrorId: null } : r)),
     };
   }
-  const axis = symmetryAxis(d);
   const flapLinks = new Map<string, string>();
   for (const f of d.flaps) {
     if (flapLinks.has(f.id)) continue;
-    if (Math.abs(f.x - axis) <= EPS) {
+    if (flapOnAxis(f, d.gridSize)) {
       flapLinks.set(f.id, f.id);
       continue;
     }
     const m = mirrorFlap(f, d.gridSize);
     const partner = d.flaps.find(
-      (g) => g.id !== f.id && !flapLinks.has(g.id) && g.x === m.x && g.y === m.y && g.r === m.r,
+      (g) => g.id !== f.id && !flapLinks.has(g.id) && g.x === m.x && g.y === m.y && g.w === m.w && g.h === m.h && g.r === m.r,
     );
     if (partner) {
       flapLinks.set(f.id, partner.id);
@@ -95,7 +100,7 @@ export function makeSymmetric(d: Design): Design {
   const flaps: Flap[] = [];
   for (const f of linked.flaps) {
     if (f.mirrorId) flaps.push(f);
-    else if (f.x < axis) {
+    else if (f.x + f.w / 2 < axis) {
       flaps.push(f, { ...f, id: createId('f'), label: '', ...mirrorFlap(f, d.gridSize) });
     }
   }

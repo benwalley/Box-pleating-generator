@@ -85,7 +85,7 @@ On narrow screens (under 700 px) the tool rail moves above the canvas and the si
 
 | Tool | Key | How to use it |
 | --- | --- | --- |
-| **Select** | `V` | Click an element to select it; drag it to move it. A selected flap shows eight square handles; drag a handle **or anywhere on its outline** to resize. A selected river shows round handles (drag a segment sideways), square end handles (lengthen or shorten an end), and a diamond handle (change the width). Dragging empty paper pans the view. |
+| **Select** | `V` | Click an element to select it; drag it to move it. A selected flap shows eight square handles; drag a handle **or anywhere on its outline** to resize. **Shift-drag** a handle to stretch the flap into a rectangular box instead: the dragged side follows the pointer, the opposite side stays put, and the length is kept. A selected river shows round handles (drag a segment sideways), square end handles (lengthen or shorten an end), and a diamond handle (change the width). Dragging empty paper pans the view. |
 | **Flap** | `F` | Press on a grid point and **drag outward** to set the flap length as you create it. Pressing an existing flap tip moves that flap instead. |
 | **River** | `R` | Click to place the start and each bend. Segments are forced horizontal or vertical. Double-click, press Enter, or click the last point again to finish. Escape cancels; Backspace removes the last point; `[` and `]` change the width while drawing. |
 | **Pan** | `H` | Drag to move around. Hold **Space** and drag to pan from any tool. The middle mouse button also pans. |
@@ -115,7 +115,7 @@ Shortcuts are ignored while you are typing in a text or number field. Space and 
 **Inspector** shows the selected item:
 
 - **Nothing selected:** design name, grid size, book symmetry switch (plus "Make symmetric" if some elements lack a mirror), default width for new rivers, and counts (flaps by corner/edge/middle, drawn vs implied rivers, active paths).
-- **Flap:** label, tip x/y, length, square size, which tree node it hangs from, its symmetry status, "Make root", Delete. The x field is locked for a flap on the symmetry axis.
+- **Flap:** label, tip x/y (the tip's top-left corner for a box), tip size w × h (0 × 0 is a square flap; see [3.11](#311-rectangular-flaps-boxes)), length, shape (square or box with its outer size, cut by tangent sides when it is circle-packed), which tree node it hangs from, its symmetry status, "Make root", Delete. The x field is locked for a flap on the symmetry axis.
 - **River:** label, width, which node each bank joins (clickable), number of bends, symmetry status, Delete.
 - **Tree node:** label, number of edges, attached flaps and rivers, "Make root" or (if it is the root) "Choose root automatically".
 
@@ -155,6 +155,8 @@ Shortcuts are ignored while you are typing in a text or number field. Space and 
 
 Problem markers: magenta rings mark vertices failing Kawasaki; purple rings mark vertices failing only Maekawa.
 
+A flap that fits only as a circle (see [3.10](#310-when-squares-dont-fit-circle-packing)) is drawn as its square with corners cut off by tangent lines, and its creases near those cuts run at the angle between the tips rather than along the grid. The "Flap circles" layer shows every flap's circle.
+
 ### Saving
 
 - The design **autosaves** to the browser's localStorage (key `pleatsmith.design.v1`) about 400 ms after each change, and reloads on the next visit. With nothing saved, the app opens the Lizard example.
@@ -168,6 +170,7 @@ Problem markers: magenta rings mark vertices failing Kawasaki; purple rings mark
 | Five flaps | Four corner flaps plus a short middle flap. Shows local fold failures honestly (4 vertices). |
 | Two groups and a river | Two columns of flaps separated by a drawn river of width 6. Symmetric. Passes all checks. |
 | Lizard | Head, tail, four legs, and a body river of width 8. Symmetric. Passes all checks. |
+| Box body | A body flap with an 8-unit tip (a 16 × 8 box) and four corner legs. Symmetric. Passes all checks. |
 
 ---
 
@@ -207,7 +210,7 @@ For every pair of flaps *i* and *j*, the grid distance between their tips must b
 cheb(tip_i, tip_j) ≥ r_i + r_j + (tree distance between their hubs)
 ```
 
-A layout of non-overlapping squares and rivers satisfies this automatically. Pairs where it holds with **equality** are **active paths**; they are where the paper is used fully and they determine much of the crease structure.
+A layout of non-overlapping squares and rivers satisfies this automatically. A pair that fails it on the grid but passes it with the **Euclidean** distance is still valid; see [3.10](#310-when-squares-dont-fit-circle-packing). Pairs where it holds with **equality** are **active paths**; they are where the paper is used fully and they determine much of the crease structure.
 
 ### 3.6 Crease types
 
@@ -236,6 +239,52 @@ Both are **necessary but not sufficient**. Deciding whether a whole box-pleated 
 ### 3.9 What full design tools add
 
 Professional tools such as Box Pleating Studio add **stretch gadgets** (Pythagorean and generalized offset Pythagorean stretches) for flaps that must overlap efficiently, **level shifters**, **elevated (rectangular) flaps**, and **meandering rivers**. Pleatsmith does not generate these; see [Limitations](#13-limitations-and-known-gaps).
+
+
+### 3.10 When squares don't fit: circle packing
+
+The square is only box pleating's stand-in for a flap's true region, a **circle of radius *r*** (Lang's circle/river method). A square always contains its circle, so a flap can be too close to a neighbour for the squares while the circles still fit. Pleatsmith accepts that layout and switches to the general rules for that pair:
+
+| Check | Box pleating (tried first) | Circle packing (fallback) |
+| --- | --- | --- |
+| Two flaps overlap | `cheb(tips) < r1 + r2` | `euclid(tips) < r1 + r2` (only this is an error) |
+| Two flaps touch (share a hub) | `cheb(tips) = r1 + r2` | `euclid(tips) = r1 + r2` |
+| A flap crosses a river | Its square overlaps the strip | Its circle overlaps the strip (only this is an error) |
+| Path condition | `cheb(tips) ≥ r1 + r2 + hub distance` | `euclid(tips) ≥ r1 + r2 + hub distance` (only failing this is an error) |
+| Implied river length | `cheb(tips) − r1 − r2` | `euclid(tips) − r1 − r2` (may be fractional) |
+
+with `euclid(a, b) = √((a.x − b.x)² + (a.y − b.y)²)`. Euclidean distances are compared with a tolerance of 10⁻⁹, so Pythagorean placements such as tips offset by (3, 4) with `r1 + r2 = 5` touch exactly.
+
+Each pair that passes only as circles (a **circle pair**) is listed as a `circle-packed` note in Checks. Circle pairs change the crease pattern locally:
+
+- **Tangent sides.** Each flap in a circle pair gets an extra side: the line tangent to its circle, facing its partner (normal `u = (tip_partner − tip) / |…|`, at distance *r* from the tip). Its shape becomes the square cut by that line, the polygon circumscribing its circle. A flap whose square crosses a river corner while its circle clears it gets a tangent side facing that corner.
+- **Off-grid contours.** On a tangent side, contours run parallel to `u`, at integer distances from the line through the two tips. That line is the axis (elevation 0), and the tangent through the contact point is the hinge. Both flaps share these lines, so contours continue straight across the hinge.
+- **Ridges** run from the tip to each new corner of the shape, bisecting the two side normals, so contours reflect across them and Kawasaki holds where they meet. At the tip, every side contributes one axial ray and one ridge, and the interior-tip fix still balances Maekawa.
+
+This is the same ownership-field method as box pleating ([7.7](#77-crease-generation-corecreasesfieldts-generatets)), with the square's four sides generalized to any set of tangent sides. When every side is axis-aligned it reduces exactly to the grid rules, so designs that fit on the grid get the same pattern as before. Where an off-grid region meets another flap's on-grid contours away from a tip, the contours generally don't line up. Those spots show as conflicts or local-check failures, just as box-pleating gaps that need a level shifter do. Real designs resolve them with **stretch gadgets** (e.g. Pythagorean stretches), which Pleatsmith does not generate.
+
+
+### 3.11 Rectangular flaps (boxes)
+
+A flap's tip can be a segment or a rectangle instead of a point: the **tip** runs from `(x, y)` to `(x + w, y + h)`, and the flap claims every point within *r* of it. In box pleating that region is a **box** of `(w + 2r) × (h + 2r)`; a plain flap is the case `w = h = 0`. This is the rectangular flap of Box Pleating Studio. A flap with a width-*w* segment tip folds into a **wide flap** whose tip is an edge *w* units long instead of a point, which is how bodies, heads and other broad parts are made.
+
+Every distance that involved a tip point now uses the nearest point of the tip:
+
+```
+tipCheb(a, b)   = max(gap_x, gap_y)      gap_x = x-distance between the two tips' extents (0 if they overlap)
+tipEuclid(a, b) = √(gap_x² + gap_y²)
+```
+
+Overlap, touching, implied rivers, the path condition and the circle-packing fallback ([3.10](#310-when-squares-dont-fit-circle-packing)) all use these. A box flap touching three others along its sides shares one hub with them, exactly as squares do.
+
+**Creases.** The box is a square split open along the tip, with the tip's length inserted:
+
+- **Ridges** run at 45° from each end of the tip to the box's corners, as the square's diagonals do from its tip.
+- **The tip** is itself a ridge: the paper folds over along it, and contours cross it.
+- **Elevation** is measured from the tip's top-left corner, plus the distance along the tip to the end that supports the nearest side. For a horizontal tip of width *w*, it is `|x − x0|` above and below the tip and `w + |y − y0|` to its right (`|y − y0|` to its left). So the band beside the tip is pleated at every unit like the rest, contours on both sides of each 45° ridge meet at equal elevations, and the far end of the tip sits at elevation *w*.
+- The ridge along the tip alternates valley and mountain between contours, like any ridge. At the near end of the tip the usual tip fix ([7.7](#77-crease-generation-corecreasesfieldts-generatets)) balances Maekawa; the far end balances on its own.
+
+A segment tip (width or height 0) folds flat locally: the **Box body** example passes every check. A tip with **both** width and height is a flat rectangle, like the lid of a box. Its inside has no creases and its outline is a hinge, so the contours that reach it stop there and its edges fail the local checks. Pleatsmith reports such flaps with a `flat-top` note; use them for a 3D box top, or set the width or height to 0 for a flat base.
 
 ---
 
@@ -317,8 +366,9 @@ Because Node only **strips** types, code in `src/core/` must avoid TypeScript fe
 
 | File | Contents |
 | --- | --- |
-| `point.ts` | `Point` type, `EPS = 1e-9`, `cheb` (L∞ distance), vector helpers (`add`, `sub`, `scale`, `dot`, `cross`), `mirrorX(p, axis)`, `clamp`, `isInteger`, `samePoint`. |
-| `rect.ts` | `Rect` (always normalized so `x0 ≤ x1`, `y0 ≤ y1`), `squareAround(c, r)` (a flap's square), `intersectRect`, `rectContact` (none / touch / overlap, with the contact midpoint), `containsOpen` (strict interior), `containsClosed`. |
+| `point.ts` | `Point` type, `EPS = 1e-9`, `cheb` (L∞ distance), `euclid` (Euclidean distance), vector helpers (`add`, `sub`, `scale`, `dot`, `cross`, `length`, `normalize`, `perp`), `mirrorX(p, axis)`, `clamp`, `isInteger`, `samePoint`. |
+| `rect.ts` | `Rect` (always normalized so `x0 ≤ x1`, `y0 ≤ y1`), `squareAround(c, r)` (a flap's square), `intersectRect`, `rectContact` (none / touch / overlap, with the contact midpoint), `containsOpen` (strict interior), `containsClosed`, `closestPointInRect`. |
+| `flap-shape.ts` | A flap's tip and shape: `tipRect`, `flapRect` (its box), `tipCenter`, distances between tips (`tipGaps`, `tipCheb`, `tipEuclid`, `closestPoints`), `support`, `supportCorner` and `tipElevation` (see [3.11](#311-rectangular-flaps-boxes)); and its side normals: `AXIS_NORMALS` (the square), `sideNormals` (plus tangent sides), `tangentNormal`, `gauge` (the generalized `cheb − r` and the nearest side), `normalsByAngle`, `shapePolygon` (corners, for drawing). See [3.10](#310-when-squares-dont-fit-circle-packing). |
 | `polyline.ts` | River centerline geometry: `stripSegments` (the rectangles a river occupies), `sideOf` (which bank a point is on), `isAtCap` (is a point against a flat end), `offsetPolyline` (shift sideways keeping it orthogonal), `snapToLattice`, `snapRiverPoints`, `normalizePolyline`, `orthogonalize`, `mirrorPolyline`, `mirrorIndex`, `translatePolyline`, `polylineBounds`, `samePolyline`, `isOrthogonalPolyline`. |
 
 ### 5.2 `src/core/model/`
@@ -338,14 +388,14 @@ Because Node only **strips** types, code in `src/core/` must avoid TypeScript fe
 | File | Contents |
 | --- | --- |
 | `symmetry/book.ts` | `linkMirrors` (recompute every mirror link from geometry), `unpairedElements`, `makeSymmetric`, `isSelfMirror`, `mirrorsInPlace`, `isMirrorImage`, `mirrorFlap`. |
-| `tree/types.ts` | `TreeNode`, `TreeEdge`, `TreeModel`, `nodeDisplayName`. |
-| `tree/contacts.ts` | `riverGeometry`, `computeContacts`: which elements touch (producing port unions), which overlap, and end-cap contacts. |
+| `tree/types.ts` | `TreeNode`, `TreeEdge`, `TreeModel`, `CirclePair`, `nodeDisplayName`. |
+| `tree/contacts.ts` | `riverGeometry`, `computeContacts`: which elements touch (producing port unions), which overlap, end-cap contacts, and flaps that cross a river corner only as squares (`circleCorners`). Also `CIRCLE_EPS` and `formatLength`. |
 | `tree/infer-tree.ts` | `inferTree`: builds the tree and emits tree-related issues. Also exports `buildAdjacency` and `distancesFrom`. |
 | `tree/layout.ts` | `layoutTree`: tidy positions for drawing the tree (`'scaled'` or `'depth'` mode). |
 | `creases/types.ts` | `Crease`, `CreaseKind`, `Assignment`, `CreasePattern`. |
-| `creases/field.ts` | `OwnershipField`: which flap owns each point, the contour orientation there, and which element covers it. |
-| `creases/generate.ts` | `generateCreases`: hinges, axials, conflicts and ridges on the grid, plus the interior-tip Maekawa fix. |
-| `creases/merge.ts` | `mergeCreases`: joins collinear unit creases into long lines for drawing. |
+| `creases/field.ts` | `OwnershipField`: which flap owns each point, the contour direction there, and which element covers it. Also `elevationAt` and `parallel`. |
+| `creases/generate.ts` | `generateCreases`: builds the candidate lines, splits them at their crossings, and classifies each piece as a hinge, axial, ridge or conflict; plus the interior-tip Maekawa fix. |
+| `creases/merge.ts` | `mergeCreases`: joins collinear touching creases (any direction) into long lines for drawing. |
 | `validation/issues.ts` | `Issue`, `IssueCode`, `Severity`, `IssueRef`, `sortIssues`. |
 | `validation/flat-foldability.ts` | `checkLocalFoldability`: Maekawa and Kawasaki at every interior vertex. |
 | `util/union-find.ts` | `UnionFind` over string keys with path compression and deterministic roots. |
@@ -402,9 +452,11 @@ Because Node only **strips** types, code in `src/core/` must avoid TypeScript fe
 ```ts
 interface Flap {
   id: string;
-  x: number;           // tip position, integer, 0..gridSize
-  y: number;
-  r: number;           // flap length = half the square's side, integer ≥ 1
+  x: number;           // tip's top-left corner, integer, 0..gridSize − w
+  y: number;           //                                0..gridSize − h
+  w: number;           // tip width, integer ≥ 0 (0 for a point tip)
+  h: number;           // tip height, integer ≥ 0
+  r: number;           // flap length = distance from the tip to the box's edge, integer ≥ 1
   label: string;
   mirrorId: string | null; // partner under book symmetry; own id if on the axis
 }
@@ -418,7 +470,7 @@ interface River {
 }
 
 interface Design {
-  schemaVersion: 1;
+  schemaVersion: 2;   // 2 added flap w and h
   name: string;
   gridSize: number;    // paper is gridSize × gridSize units, 2..96
   flaps: Flap[];
@@ -448,11 +500,13 @@ interface TreeModel {
   edges: TreeEdge[];                // kind 'flap' | 'river' | 'implicit'
   rootKey: string | null;
   hubOfFlap: Map<flapId, nodeKey>;
-  activePaths: number;
+  activePaths: number;                    // grid and circle pairs whose path condition is tight
+  circlePairs: CirclePair[];              // pairs that fit only as circles: { a, b, distance, need, active }
+  circleNormals: Map<flapId, Point[]>;    // tangent-side normals per flap (see 3.10)
 }
 
 interface Crease {
-  x1; y1; x2; y2;
+  x1; y1; x2; y2;                   // grid points, or off-grid points next to circle-packed flaps
   kind: 'hinge' | 'ridge' | 'axial' | 'conflict';
   mv: 'M' | 'V' | 'U';
   elevation?: number;
@@ -469,10 +523,10 @@ Saved files are JSON:
 {
   "format": "pleatsmith-design",
   "design": {
-    "schemaVersion": 1,
+    "schemaVersion": 2,
     "name": "Lizard",
     "gridSize": 16,
-    "flaps": [{ "id": "f_…", "x": 0, "y": 0, "r": 4, "label": "Front leg", "mirrorId": "f_…" }],
+    "flaps": [{ "id": "f_…", "x": 0, "y": 0, "w": 0, "h": 0, "r": 4, "label": "Front leg", "mirrorId": "f_…" }],
     "rivers": [{ "id": "r_…", "points": [{ "x": 0, "y": 8 }, { "x": 16, "y": 8 }], "width": 8, "label": "Body", "mirrorId": "r_…" }],
     "symmetry": { "book": true },
     "nodeLabels": {},
@@ -481,7 +535,7 @@ Saved files are JSON:
 }
 ```
 
-`parseDesign` accepts either this wrapper or a bare design object. It validates every flap and river, ignores unknown fields, **discards stored `mirrorId` values and recomputes them** from geometry, normalizes values to the grid, and rejects files with a newer `schemaVersion`. Errors come back as readable messages.
+`parseDesign` accepts either this wrapper or a bare design object. It validates every flap and river, ignores unknown fields, **discards stored `mirrorId` values and recomputes them** from geometry, normalizes values to the grid, and rejects files with a newer `schemaVersion`. Version 1 files (before tip sizes) load with `w = h = 0`, and a flap missing `w` or `h` gets 0. Errors come back as readable messages.
 
 ---
 
@@ -496,7 +550,7 @@ analyze(design):
   3. Warning for every element without a mirror (symmetry on only).
   4. inferTree → tree + contact/tree issues.
   5. If any issue is blocking, stop: pattern = null.
-  6. generateCreases → crease pattern.
+  6. generateCreases(design, rivers, tree.circleNormals) → crease pattern.
   7. checkLocalFoldability on the unit creases.
   8. Warnings for conflicts, ambiguous cells and failing vertices
      (each lists up to 50 locations as point references).
@@ -504,18 +558,21 @@ analyze(design):
  10. Sort issues by severity.
 ```
 
-**Blocking issues** (pattern not generated): `flap-overlap`, `flap-river-overlap`, `river-overlap`.
+**Blocking issues** (pattern not generated): `flap-overlap`, `flap-river-overlap`, `river-overlap`. The two flap overlaps are measured with circles, so squares that overlap while their circles fit don't block ([3.10](#310-when-squares-dont-fit-circle-packing)).
 
 ### 7.2 Contacts (`core/tree/contacts.ts`)
 
 Determines which elements touch, which overlap, and where.
 
-**Flap–flap.** Using the Chebyshev distance *d* between tips and the needed spacing `r1 + r2`:
-- `d < r1 + r2` → **overlap** error (blocking).
+**Flap–flap.** Using the Chebyshev distance *d* and the Euclidean distance *e* between tips (between the nearest points of rectangular tips, see [3.11](#311-rectangular-flaps-boxes)), and the needed spacing `r1 + r2`:
 - `d = r1 + r2` → **touch**: union the two flap base ports (they share a node).
+- `d < r1 + r2` (the squares overlap):
+  - `e < r1 + r2` → **overlap** error (blocking): even the circles overlap.
+  - `e = r1 + r2` (within `CIRCLE_EPS = 1e-9`) → the circles touch: union the ports.
+  - otherwise the circles are apart; nothing to do here (tree inference finds the pair).
 
 **Flap–river and river–river.** Each river is a list of rectangles (one per segment). Each pair of rectangles is classified by `rectContact`:
-- **overlap** (positive area) → error (blocking).
+- **overlap** (positive area) → for a flap, measure from the tip to the nearest point of the strip rectangle. If the circle reaches inside, error (blocking). Otherwise the square only crosses a corner of the strip: record a **circle corner** (it gives the flap a tangent side), and if the circle touches the corner exactly, treat that corner as a touch point. Two rivers overlapping is always an error.
 - **touch** (shared edge or corner) → look at the **contact midpoint**:
   - If it lies against a **flat end cap** (`isAtCap`), it is an end contact. End contacts do **not** connect anything; if that is the only contact, a `river-cap-contact` warning is emitted.
   - Otherwise `sideOf` says which bank (`a` or `b`) it touches, and the ports are unioned: the flap base with `river:<id>:<side>`, or the two river banks with each other.
@@ -548,15 +605,22 @@ Touching elements merge their ports into one node. Because ports belong to eleme
    - Both banks in the same hub → river-self-loop error (edge skipped).
    - The edge would close a cycle → tree-cycle error (edge skipped).
 4. Implied rivers (Kruskal): for every flap pair compute
-   gap = cheb(tips) − r_i − r_j; sort ascending. For each pair with gap > 0
+   gap = cheb(tips) − r_i − r_j, or, if that is negative (squares overlap),
+   euclid(tips) − r_i − r_j; sort ascending. For each pair with gap > 0
    whose hubs are in different components, add an 'implicit' edge of length gap.
 5. Leaves: one leaf node per flap (key tip:<id>) and a 'flap' edge of length r
    from the flap's hub.
 6. Warn about river banks touching nothing (river-unattached).
-7. Path condition: for every flap pair (skipping overlaps), compute the tree
-   distance between their hubs (BFS on the weighted tree). If
-   cheb < r_i + r_j + hubDistance → path-too-short error; if equal, count an
-   active path. Pairs with no tree path → one 'disconnected' warning.
+7. Path condition: for every flap pair (skipping circle overlaps), compute
+   need = r_i + r_j + tree distance between their hubs (BFS on the weighted
+   tree).
+   - cheb ≥ need → fine; if equal, count an active path.
+   - else euclid ≥ need → a circle pair (circle-packed note); if equal,
+     count an active path.
+   - else → path-too-short error (reported in straight-line distance).
+   Pairs with no tree path → one 'disconnected' warning.
+   Each circle pair gives both flaps a tangent-side normal facing the other
+   (circleNormals); each circle corner gives its flap one facing the corner.
 8. Info for any hub with exactly two edges (redundant-node): it behaves like
    one longer edge.
 9. Root: rootPort if it resolves; otherwise the hub with the most edges.
@@ -590,36 +654,48 @@ A tidy-tree layout from the root:
 
 ### 7.7 Crease generation (`core/creases/field.ts`, `generate.ts`)
 
-**The ownership field.** For every point *p*, its owner is the flap whose square boundary is nearest in L∞:
+**The ownership field.** Each flap has a set of side normals: the square's four (`±x`, `±y`), plus one tangent side per circle pair or circle corner ([3.10](#310-when-squares-dont-fit-circle-packing)). For every point *p*, its owner is the flap whose shape boundary is nearest:
 
 ```
-value(f, p) = cheb(p, tip_f) − r_f
-owner(p)    = argmin over flaps of value(f, p)
+gauge(f, p) = max over side normals n of f of ((p − tip_f) · n) − r_f
+owner(p)    = argmin over flaps of gauge(f, p)
 ```
 
-Inside a square that square's flap is the owner (squares don't overlap in valid layouts). In rivers and open paper, the owner is the nearest bank's flap. From the owner:
+Here the tip enters through its support, `support(T, n) = max over tip points t of t · n`, so the formula above is `max over n of (p · n − support(T, n)) − r_f`; for a point tip that is `(p − tip) · n`. With only the four axis normals, `gauge(f, p)` is the L∞ distance from *p* to the tip minus `r_f` (`cheb(p, tip_f) − r_f` for a point tip): the box-pleating metric. Inside a shape that shape's flap is the owner (shapes don't overlap in valid layouts). In rivers and open paper, the owner is the nearest bank's flap. From the owner:
 
-- **Orientation:** `'H'` (contours run horizontally) if `|p.x − tip.x| > |p.y − tip.y|`, else `'V'`. So in the left and right wedges of a square contours are horizontal, in the top and bottom wedges they are vertical, and beyond a square's sides they continue across rivers.
-- **Ambiguity:** if another flap ties for the minimum value but disagrees on orientation, the point is **ambiguous**.
-- **Element:** `elementAt(p)` reports which flap square (`f:<id>`) or river (`r:<id>`) covers *p* (strict interior), or `null` for open paper.
+- **Direction:** contours run along the normal `n` that attains the maximum (the owner's nearest side). For a square that is horizontal in its left and right wedges and vertical in its top and bottom wedges (ties on the diagonals go to vertical); beyond a square's sides contours continue across rivers. On a tangent side they run parallel to the line between the two tips.
+- **Elevation** of *p* is its distance from the owner's axis line, the line through the tip along that direction: `|cross(n, p − tip)|`. For a square this is `|p.y − tip.y|` where contours are horizontal and `|p.x − tip.x|` where they are vertical. For a rectangular tip it is measured from the tip's top-left corner plus the distance along the tip to the corner that supports *n* (`tipElevation`, see [3.11](#311-rectangular-flaps-boxes)).
+- **Ambiguity:** if another flap ties for the minimum gauge but disagrees on direction, the point is **ambiguous**.
+- **Element:** `elementAt(p)` reports which flap tip (`t:<id>`, the inside of a tip with both width and height), flap shape (`f:<id>`) or river (`r:<id>`) covers *p* (strict interior), or `null` for open paper. A tip's outline is therefore a hinge, and pieces inside a tip get no crease.
 
-**Grid segments.** For every unit segment of the integer grid, the field is sampled 0.25 units to either side:
+**Candidate lines.** Every crease lies on one of these lines, clipped to the paper:
+
+- the interior grid lines `x = 1 … n−1` and `y = 1 … n−1`;
+- the cell diagonals `x − y = c` and `x + y = c`;
+- for each tangent side with normal `u` of a flap: the contours parallel to `u` at integer offsets from the tip (clipped to the wedge where that side is nearest), and the tangent line itself;
+- for each new corner of a cut shape: the ridge line from the tip through it (direction `n_i + n_j`).
+
+**Arrangement.** Every line is split wherever it crosses another, giving **pieces**. Crossing points go through a point pool that merges points closer than 10⁻⁷ and snaps near-multiples of ½, so creases that meet at a vertex share identical coordinates (the local checks key vertices by exact coordinates). On a box-pleated design the pieces are exactly the unit grid segments and half cell diagonals.
+
+**Classifying a piece.** The field is sampled on both sides of its midpoint: 0.25 units away for a unit grid segment (clear of half-unit ties), or 10⁻⁴ units away for any other piece and for grid segments next to a circle-packed flap (off-grid wedges near a tip can be much narrower than a quarter unit).
 
 | Condition | Result |
 | --- | --- |
 | The two sides are in different elements | **Hinge** (`mv: 'U'`) |
-| Both sides want contours along this segment, same elevation parity | **Axial** at elevation *e*, `M` if *e* even, `V` if odd |
-| Both sides want contours along this segment, different parity | **Conflict** |
-| The sides disagree on orientation | **Conflict** |
-| Otherwise | No crease |
+| Both sides want contours parallel to this piece, at integer elevations with the same parity | **Axial** at elevation *e*, `M` if *e* even, `V` if odd |
+| Both sides want contours parallel to this piece, at different parities (or only one at an integer elevation) | **Conflict** |
+| Both sides want the same direction, not along this piece | No crease |
+| The directions differ, and reflecting one across the piece gives the other | **Ridge** |
+| The directions differ any other way | **Conflict** |
+| The two sides are opposite sides of the same flap (along a segment tip) | **Ridge**, elevation as above |
 
-Elevation for a horizontal segment at row *y* is `|y − tip.y|`; for a vertical segment at column *x* it is `|x − tip.x|`.
+A ridge's elevation *e* is the lower elevation of its two ends relative to the owner (the upper side's owner), along the owner's own contour direction. It is a **valley if *e* is even**, a mountain if odd. This makes ridges alternate along their length and meet contours consistently.
 
-**Ridges.** Each grid cell is sampled at four points (north, east, south, west, 0.2 units in from its edges). If orientation flips across one diagonal (north = east ≠ south = west, or north = west ≠ south = east), that diagonal is a **ridge**. Its elevation *e* is the lower elevation of its two ends relative to the owner; it is a **valley if *e* is even**, a mountain if odd. This makes ridges alternate along their length and meet contours consistently.
+**On-grid cells** keep the original whole-cell ridge rule, so grid designs come out exactly as before. A half cell diagonal is classified by its cell: the cell is sampled at four points (north, east, south, west, 0.2 units in from its edges). If the direction flips across one diagonal (north = east ≠ south = west, or north = west ≠ south = east), that diagonal is a ridge. A cell where any of the four samples has an off-grid direction falls back to classifying its pieces individually.
 
-**Interior tip fix.** At a flap tip strictly inside the paper, four valley ridges meet four mountain axial rays (M = V = 4), which violates Maekawa. The axial ray running **right** from the tip, up to the square's edge, is flipped to valley.
+**Interior tip fix.** At a flap tip strictly inside the paper (for a segment tip, at either end), each side contributes one valley ridge and one mountain axial ray (for a square, M = V = 4), which violates Maekawa. The elevation-0 axial ray running **right** from the tip, up to the shape's edge, is flipped to valley; if there is none (the left end of a horizontal tip, where the right-hand ray is the tip ridge), the first of down, left and up. The far end of a segment tip is balanced already (its rays sit at elevation *w*), so nothing is flipped there. Tips with both width and height are skipped: their corners are hinges.
 
-**Ambiguous cells** are collected for any cell touching an ambiguous sample. **Merging** (`merge.ts`) groups unit creases by kind, assignment, elevation, direction and line, and joins consecutive ones, purely to reduce the number of SVG lines.
+**Ambiguous cells** are collected for any cell containing an ambiguous sample. **Merging** (`merge.ts`) groups creases by kind, assignment, elevation, direction and line (any angle), and joins consecutive ones, purely to reduce the number of SVG lines.
 
 ### 7.8 Edits and symmetry (`core/model/operations.ts`, `core/symmetry/book.ts`)
 
@@ -632,8 +708,9 @@ Elevation for a horizontal segment at row *y* is `|y − tip.y|`; for a vertical
 
 | Operation | Behaviour |
 | --- | --- |
-| `addFlap` | Clamps to the grid. With symmetry: a tip on the axis links to itself; otherwise a partner is created at `gridSize − x`. |
-| `moveFlap` | Rounds and clamps. A flap on the axis keeps its x. The partner moves to the mirrored position. |
+| `addFlap` | Clamps to the grid. With symmetry: a tip on the axis links to itself; otherwise a partner is created at `gridSize − x − w`. |
+| `moveFlap` | Rounds and clamps (the whole tip stays on the paper). A flap on the axis keeps its x. The partner moves to the mirrored position. |
+| `setFlapTip` | Sets the tip's corner and size (`w`, `h` ≥ 0). The partner gets the mirrored tip (`x' = gridSize − x − w`). A flap on the axis stays centred: its width changes in steps that keep `gridSize − w` even. |
 | `resizeFlap` | Clamps `1 ≤ r ≤ gridSize`. The partner gets the same length. |
 | `setFlapLabel` | Only that flap (partners can have different labels, e.g. "left leg" and "right leg"). |
 | `addRiver` | Normalizes the river (snap, merge collinear points); returns `id: null` if it has fewer than two distinct points. With symmetry, creates a mirrored partner unless the river is its own mirror image. |
@@ -666,15 +743,17 @@ Report counts and every failing vertex.
 | Code | Severity | Meaning |
 | --- | --- | --- |
 | `too-few-flaps` | info | Fewer than two flaps. |
-| `flap-overlap` | error, blocking | Two flap squares overlap. |
-| `flap-river-overlap` | error, blocking | A flap square crosses a river. |
+| `flap-overlap` | error, blocking | Two flaps overlap even as circles. |
+| `flap-river-overlap` | error, blocking | A flap crosses a river even as a circle. |
 | `river-overlap` | error, blocking | Two rivers cross. |
 | `river-cap-contact` | warning | Something touches only the end of a river. |
 | `river-self-loop` | error | A river's two banks join the same node. |
 | `tree-cycle` | error | A river closes a loop. |
 | `river-unattached` | warning | A river bank touches nothing. |
 | `disconnected` | warning | Part of the design is not connected to the rest. |
-| `path-too-short` | error | Two flaps are closer on the grid than in the tree. |
+| `path-too-short` | error | Two flaps are closer in a straight line than in the tree (so they fail on the grid too). |
+| `flat-top` | info | A flap's tip has both width and height: a flat box top, not flat-foldable around its edges. |
+| `circle-packed` | info | Two flaps (or a flap and a river corner) fit only as circles; their creases run off the grid. |
 | `redundant-node` | info | A node with exactly two edges. |
 | `parity-conflict` | warning | Contours don't line up (needs a shift or a level shifter). |
 | `ambiguous-region` | warning | Cells not clearly owned by one flap. |
@@ -707,7 +786,7 @@ All changes go through it. Main command groups:
 
 - **Plumbing:** `apply(op)`, `beginGesture()`, `previewGesture(op)`, `endGesture(finalize?)`, `cancelGesture()`, `undo()`, `redo()`.
 - **UI:** `setTool`, `select`, `focusPoint`, `setViewMode`, `toggleLayer`, `setRiverDrawWidth`, `setTreeLayout`.
-- **Flaps:** `addFlap`, `moveFlap`, `resizeFlap`, `setFlapLabel`.
+- **Flaps:** `addFlap`, `moveFlap`, `resizeFlap`, `setFlapTip`, `setFlapLabel`.
 - **Rivers:** `addRiver`, `setRiverWidth`, `setRiverLabel`, `translateRiver`.
 - **Selection-wide:** `deleteSelection`, `nudgeSelection`, `growSelection`.
 - **Tree:** `setNodeLabel` (leaves route to the flap label), `setRoot` (`null` = automatic).
@@ -747,7 +826,7 @@ Stroke widths stay constant on screen with `vector-effect: non-scaling-stroke`. 
 ### 9.2 Render order (bottom to top)
 
 1. Paper (with drop shadow)
-2. Clipped to the paper: flap squares and rivers → grid → ambiguous cells → creases (hinges, then axials, ridges, conflicts)
+2. Clipped to the paper: flap shapes (squares, or cut squares for circle-packed flaps) and rivers → grid → flap circles → ambiguous cells → creases (hinges, then axials, ridges, conflicts)
 3. Paper outline
 4. Symmetry axis (amber dashed)
 5. Problem markers and focus ring
@@ -761,10 +840,10 @@ Each layer is a pure function in `canvas/layers.ts`. Flaps are tinted in two alt
 
 Tolerance is 8 screen pixels converted to grid units.
 
-1. **Handles of the selected element.** Flap: corner and edge handles, then anywhere within tolerance of its square's outline (all resize). River: width handle, then end handles, then segment handles.
-2. **Flap tips** (nearest within tolerance, minimum 0.3 units).
+1. **Handles of the selected element.** Flap: corner and edge handles of its box, then anywhere within tolerance of the box's outline (all resize; with Shift held at press, they stretch the tip instead). River: width handle, then end handles, then segment handles.
+2. **Flap tips** (nearest within tolerance, minimum 0.3 units; anywhere along a rectangular tip, or its centre dot).
 3. **River strips** (rivers are narrow, so they win over squares).
-4. **Flap squares**, smallest first (so overlapping squares remain selectable).
+4. **Flap boxes**, smallest area first (so overlapping boxes remain selectable).
 
 ### 9.4 Tools
 
@@ -845,11 +924,11 @@ Tests live in `tests/` and use Node's built-in `node:test` and `node:assert/stri
 
 | Suite | Covers |
 | --- | --- |
-| `geometry.test.ts` | Chebyshev distance, rectangle contacts (touch, corner touch, overlap), polyline normalization, strip shapes (flat caps, filled corners), side consistency around bends, end-cap detection, offsetting, lattice snapping. |
-| `operations.test.ts` | Mirrored add/move/resize/delete, axis flaps, linking existing mirrors and "make symmetric", mirrored and self-mirrored rivers, width changes keeping bank A, axis rivers widening in steps of 2, symmetric segment drags, node labels stored on one port. |
-| `analysis.test.ts` | Presets have no errors; the clean presets pass every local check; touching flaps share a hub; drawn rivers become edges; implied rivers; overlap blocking; flaps crossing rivers; path-condition violations; labels and root surviving re-analysis. |
+| `geometry.test.ts` | Chebyshev and Euclidean distance, distances and elevation for rectangular tips, flap shapes cut by tangent sides (gauge and corners), rectangle contacts (touch, corner touch, overlap), polyline normalization, strip shapes (flat caps, filled corners), side consistency around bends, end-cap detection, offsetting, lattice snapping. |
+| `operations.test.ts` | Mirrored add/move/resize/delete, rectangular tips mirroring and widening on the axis, tip sizes saved and version 1 files loading, axis flaps, linking existing mirrors and "make symmetric", mirrored and self-mirrored rivers, width changes keeping bank A, axis rivers widening in steps of 2, symmetric segment drags, node labels stored on one port. |
+| `analysis.test.ts` | Presets have no errors; a segment-tip box flap touches its neighbours, passes every local check and has an alternating tip ridge; a tip with width and height is a flat top with a `flat-top` note; box flaps fit as circles from the nearest point of the tip; the clean presets pass every local check; touching flaps share a hub; drawn rivers become edges; implied rivers; circle overlaps blocking; flaps crossing rivers; path-condition violations; circle packing (overlapping squares with touching circles share a hub, the active path becomes the axis and the shared tangent the hinge, the tip passes local checks; a short grid path that fits as circles; a square crossing a river corner); labels and root surviving re-analysis. |
 
-There are currently **26 tests**. UI components have no automated tests; they were checked visually and with scripted mouse interaction in a headless browser.
+There are currently **39 tests**. UI components have no automated tests; they were checked visually and with scripted mouse interaction in a headless browser.
 
 **Suggested way to test a new core feature:** write the pure function and a test first, run `npm test`, then wire it into the controller and UI.
 
@@ -882,7 +961,7 @@ There are currently **26 tests**. UI components have no automated tests; they we
 
 Generation lives in `core/creases/generate.ts`. Conflicts and ambiguous cells already mark where such gadgets would be needed. A gadget would typically replace the creases inside a region (e.g. the cells around a conflict) after the main pass, then the fold checks run as usual.
 
-### Add an element type (e.g. rectangular flaps)
+### Add an element type (e.g. hexagonal or 22.5° molecules)
 
 1. Add it to `Design` in `core/model/types.ts`, plus normalization in `design.ts` and parsing in `serialize.ts` (bump `SCHEMA_VERSION` and handle older files).
 2. Give it ports in `ports.ts`.
@@ -905,10 +984,12 @@ The name appears in `package.json`, `index.html` (`<title>`), `bp-topbar.ts` (wo
 
 - Pythagorean or generalized offset Pythagorean stretches,
 - level shifters,
-- elevated (rectangular) flaps or half-unit structures,
+- half-unit structures,
 - meandering rivers.
 
 Those situations appear as conflicts, ambiguous cells or warnings instead of invented creases.
+
+**Circle packing is local.** A flap that fits only as a circle gets off-grid creases from its tangent sides ([3.10](#310-when-squares-dont-fit-circle-packing)). The structure along each circle pair's path (axis, hinge, ridges to the cut corners, tip) is consistent and passes the local checks. Where the off-grid region meets on-grid contours of other flaps, or a fractional implied river, it usually doesn't; that would take a stretch gadget. Off-grid creases also make the pattern harder to fold precisely, so prefer moving a flap one unit when the grid allows it.
 
 **Mountain/valley.** Hinges are always unassigned. The parity heuristic plus the interior-tip fix is not a full assignment solver, and some vertices next to hinges may fail Kawasaki or Maekawa until hinges are assigned by hand.
 
@@ -919,11 +1000,11 @@ Those situations appear as conflicts, ambiguous cells or warnings instead of inv
 - A river touched by a single flap on one bank is equivalent to one longer flap (reported as a redundant node).
 - End caps never connect anything; rivers should run to the paper edge or wrap along their flaps.
 
-**Editing.** One element can be selected at a time (no multi-select or marquee yet). Rivers can't be split or joined, only redrawn. The analysis reruns on every drag step; very large grids with many flaps may feel slower.
+**Editing.** One element can be selected at a time (no multi-select or marquee yet). Rivers can't be split or joined, only redrawn. The analysis reruns on every drag step; very large grids with many flaps may feel slower, and circle-packed flaps add many off-grid lines (a 96-unit grid with several large circle pairs takes about 150 ms per analysis).
 
 **Not yet verified with the real dependencies.** At the time of writing the app had been type-checked and rendered in a headless browser using a stand-in for Lit, because the real packages couldn't be installed in the environment where it was built. Expect possibly small fixes the first time it runs with `npm install` and `npm run dev`.
 
-**Ideas for future work:** multi-select; hinge M/V assignment (e.g. a search over interleaved and symmetric hinge assignments); level-shifter gadgets; rectangular flaps; export to SVG and ORIPA's `.opx` / `.cp` formats; diagonal symmetry; a folded-preview view; component tests.
+**Ideas for future work:** multi-select; hinge M/V assignment (e.g. a search over interleaved and symmetric hinge assignments); level-shifter gadgets; pleating the inside of a rectangular tip so boxes with both width and height fold flat; export to SVG and ORIPA's `.opx` / `.cp` formats; diagonal symmetry; a folded-preview view; component tests.
 
 ---
 
@@ -936,7 +1017,8 @@ Those situations appear as conflicts, ambiguous cells or warnings instead of inv
 | Type errors about `.ts` imports | `allowImportingTsExtensions` and `noEmit` must stay enabled in `tsconfig.json`. |
 | A component property is always `undefined` | It's declared as a class field with an initializer instead of `declare` + `static properties`, or `useDefineForClassFields` was changed. |
 | The app opens an old design | That's the autosave. Use File → New design, or clear the `pleatsmith.design.v1` localStorage entry. |
-| No crease pattern appears | A blocking error (an overlap). The Checks panel names it; click it to select the culprit. |
+| No crease pattern appears | A blocking error (an overlap, measured with circles). The Checks panel names it; click it to select the culprit. |
+| Creases at odd angles | A flap fits only as a circle next to a neighbour (a `circle-packed` note in Checks). Move it apart on the grid to get a pure box-pleated pattern. |
 | Pink dashed lines | Parity conflicts: shift one of the flaps involved by one unit, or the spot needs a level shifter. |
 | Amber-hatched cells | Paper no single flap clearly owns. Fill the gap with a flap or a river. |
 | A river won't widen by 1 | It lies along the symmetry axis, so it widens in steps of 2 to keep its banks on the grid. |
@@ -955,10 +1037,12 @@ Those situations appear as conflicts, ambiguous cells or warnings instead of inv
 | **Bank A / Bank B** | The two sides of a river; A is left of travel in math coordinates (below a rightward river on screen). |
 | **Book symmetry** | Left/right mirror symmetry about the vertical centre line. |
 | **Chebyshev / L∞ distance** | `max(|dx|, |dy|)`: the metric of box pleating. |
+| **Circle pair** | Two flaps too close for their squares but far enough apart for their circles; their creases use tangent sides and run off the grid. |
 | **Conflict** | Where neighbouring contours disagree in parity or orientation. |
 | **Elevation** | Distance from the owner flap's axis line. |
 | **End cap** | The flat end of a river; it doesn't connect anything. |
-| **Flap** | A leaf of the tree; drawn as a square of side 2 × length centred on its tip. |
+| **Flap** | A leaf of the tree; drawn as the box of points within its length of its tip (a square of side 2 × length for a point tip). |
+| **Box flap / rectangular flap** | A flap whose tip is a segment or rectangle (width and height); a segment tip makes a wide flap. |
 | **Gesture** | A drag recorded as a single undo step. |
 | **Hinge** | A crease on a boundary between flap squares and rivers. |
 | **Hub** | An internal tree node: a group of touching ports. |
@@ -967,8 +1051,9 @@ Those situations appear as conflicts, ambiguous cells or warnings instead of inv
 | **Lattice** | Valid centerline coordinates for a river (integers for even widths, half-integers for odd). |
 | **Level shifter** | A gadget that changes contour parity; not generated here. |
 | **Maekawa's theorem** | Mountains and valleys at a flat-foldable vertex differ by 2. |
-| **Ownership field** | Assignment of every point to the flap with the nearest square boundary. |
-| **Path condition** | `cheb(tips) ≥ tree distance` for every flap pair. |
+| **Ownership field** | Assignment of every point to the flap with the nearest shape boundary (its square, or the square cut by tangent sides). |
+| **Path condition** | `cheb(tips) ≥ tree distance` for every flap pair, or failing that `euclid(tips) ≥ tree distance` (circle packing). |
+| **Tangent side** | A side added to a flap's square: the line tangent to its circle facing a neighbour it only fits next to as a circle. |
 | **Port** | A stable handle on where a node comes from: a flap base, flap tip, or river bank. |
 | **Ridge** | A 45° crease where contour direction changes. |
 | **River** | An internal tree edge drawn as a strip of constant width. |

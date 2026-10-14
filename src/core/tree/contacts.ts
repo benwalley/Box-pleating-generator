@@ -1,13 +1,20 @@
 /**
  * Contact detection: which elements touch, which overlap, and on which bank
  * of a river a contact happens. Touching elements share a tree node.
+ *
+ * A flap is a square in box pleating, but the square is only the grid's
+ * approximation of the flap's true region, a circle of radius r. When two
+ * squares overlap but the circles don't, the layout is still foldable with
+ * creases off the grid (circle packing), so it is not an error: those flaps
+ * are reported as circle contacts and get tangent sides in the crease field.
  */
-import { cheb } from '../geometry/point.ts';
+import { closestPoints, flapRect, tipCheb, tipEuclid, tipRect } from '../geometry/flap-shape.ts';
+import { euclid, type Point } from '../geometry/point.ts';
 import { isAtCap, sideOf, stripSegments, type Side, type StripSegment } from '../geometry/polyline.ts';
-import { rectContact, squareAround } from '../geometry/rect.ts';
+import { rectContact } from '../geometry/rect.ts';
 import { flapName, riverName } from '../model/naming.ts';
 import { flapBasePort, riverPort, type PortKey } from '../model/ports.ts';
-import type { Design, Flap, River } from '../model/types.ts';
+import type { Design, Flap, Id, River } from '../model/types.ts';
 import type { Issue } from '../validation/issues.ts';
 
 export interface RiverGeometry {
@@ -15,10 +22,21 @@ export interface RiverGeometry {
   readonly segments: readonly StripSegment[];
 }
 
+/** A flap whose square crosses a river, though its circle clears the river at `point`. */
+export interface CircleCorner {
+  readonly flapId: Id;
+  readonly riverId: Id;
+  readonly point: Point;
+}
+
 export interface ContactResult {
   readonly unions: ReadonlyArray<readonly [PortKey, PortKey]>;
   readonly issues: readonly Issue[];
+  readonly circleCorners: readonly CircleCorner[];
 }
+
+/** Tolerance for comparing Euclidean distances, which are irrational in general. */
+export const CIRCLE_EPS = 1e-9;
 
 export const riverGeometry = (river: River): RiverGeometry => ({
   river,
@@ -37,26 +55,34 @@ function bankAt(seg: StripSegment, p: { x: number; y: number }): BankContact {
 export function computeContacts(design: Design, rivers: readonly RiverGeometry[]): ContactResult {
   const unions: Array<readonly [PortKey, PortKey]> = [];
   const issues: Issue[] = [];
+  const circleCorners: CircleCorner[] = [];
   const flaps = design.flaps;
   const fName = (f: Flap) => flapName(design, f.id);
   const rName = (r: River) => riverName(design, r.id);
 
-  // Flap to flap: squares overlap iff the Chebyshev distance is less than r1 + r2.
+  // Flap to flap: boxes overlap iff the Chebyshev distance between the tips
+  // is less than r1 + r2; circles overlap iff the Euclidean distance is.
   for (let i = 0; i < flaps.length; i++) {
     for (let j = i + 1; j < flaps.length; j++) {
       const a = flaps[i]!;
       const b = flaps[j]!;
-      const d = cheb(a, b);
+      const d = tipCheb(a, b);
       const need = a.r + b.r;
-      if (d < need) {
+      if (d >= need) {
+        if (d === need) unions.push([flapBasePort(a.id), flapBasePort(b.id)]);
+        continue;
+      }
+      const e = tipEuclid(a, b);
+      if (e < need - CIRCLE_EPS) {
         issues.push({
           code: 'flap-overlap',
           severity: 'error',
           blocking: true,
-          message: `${fName(a)} and ${fName(b)} overlap by ${need - d}. Move them apart or shorten one.`,
+          message: `${fName(a)} and ${fName(b)} overlap even as circles (by ${formatLength(need - e)}). Move them apart or shorten one.`,
           refs: [{ kind: 'flap', id: a.id }, { kind: 'flap', id: b.id }],
         });
-      } else if (d === need) {
+      } else if (e <= need + CIRCLE_EPS) {
+        // Circles touching: the flaps share a hub, just as touching squares do.
         unions.push([flapBasePort(a.id), flapBasePort(b.id)]);
       }
     }
@@ -65,15 +91,27 @@ export function computeContacts(design: Design, rivers: readonly RiverGeometry[]
   // Flap to river.
   for (const g of rivers) {
     for (const f of flaps) {
-      const sq = squareAround(f, f.r);
+      const sq = flapRect(f);
+      const tip = tipRect(f);
       let overlapped = false;
       let capTouch = false;
       const sides = new Set<Side>();
       for (const seg of g.segments) {
         const c = rectContact(sq, seg.rect);
-        if (c.kind === 'overlap') overlapped = true;
-        if (c.kind !== 'touch') continue;
-        const bank = bankAt(seg, c.mid);
+        let mid = c.kind === 'touch' ? c.mid : null;
+        if (c.kind === 'overlap') {
+          // The square crosses the strip; the flap still fits if its circle clears it.
+          const [t, q] = closestPoints(tip, seg.rect);
+          const e = euclid(t, q);
+          if (e < f.r - CIRCLE_EPS) {
+            overlapped = true;
+            continue;
+          }
+          circleCorners.push({ flapId: f.id, riverId: g.river.id, point: q });
+          if (e <= f.r + CIRCLE_EPS) mid = q;
+        }
+        if (!mid) continue;
+        const bank = bankAt(seg, mid);
         if (bank.kind === 'side') sides.add(bank.side);
         else if (bank.kind === 'cap') capTouch = true;
       }
@@ -82,7 +120,7 @@ export function computeContacts(design: Design, rivers: readonly RiverGeometry[]
           code: 'flap-river-overlap',
           severity: 'error',
           blocking: true,
-          message: `${fName(f)} overlaps river ${rName(g.river)}. A flap's square may touch a river bank but not cross it.`,
+          message: `${fName(f)} overlaps river ${rName(g.river)}. A flap may touch a river bank but not cross it.`,
           refs: [{ kind: 'flap', id: f.id }, { kind: 'river', id: g.river.id }],
         });
         continue;
@@ -150,5 +188,11 @@ export function computeContacts(design: Design, rivers: readonly RiverGeometry[]
     }
   }
 
-  return { unions, issues };
+  return { unions, issues, circleCorners };
 }
+
+/** Lengths are integers on the grid but irrational in circle packing. */
+export const formatLength = (v: number): string => {
+  const r = Math.round(v * 100) / 100;
+  return Number.isInteger(r) ? String(r) : r.toFixed(2);
+};

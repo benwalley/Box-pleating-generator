@@ -16,7 +16,9 @@ imports use explicit `.ts` extensions and the code avoids TypeScript-only
 runtime syntax (enums, parameter properties).
 
 - `geometry/`: points, rectangles, and orthogonal polylines (river
-  centerlines). The Chebyshev (L∞) metric is used throughout.
+  centerlines), and flap shapes (`flap-shape.ts`). The Chebyshev (L∞)
+  metric is used throughout, with the Euclidean metric as the fallback for
+  flaps that only fit as circles.
 - `model/`: the `Design` type (the only thing a user authors), id and naming
   helpers, normalization, JSON import/export, and `operations.ts`: every edit
   as a pure function `Design -> Design`. Operations are symmetry-aware.
@@ -65,7 +67,7 @@ and a node takes the label of any of its ports.
 - **New crease feature (e.g. level shifters, Pythagorean stretches):**
   generation lives in `creases/generate.ts`. Conflicts and ambiguous cells
   already mark the places such gadgets would go.
-- **New element type (e.g. rectangular flaps):** add it to `Design`,
+- **New element type (e.g. hexagonal molecules):** add it to `Design`,
   give it ports, teach `contacts.ts` how it touches other elements and
   `field.ts` how it owns space.
 - **Theme:** all colours and type live in `styles/tokens.css`.

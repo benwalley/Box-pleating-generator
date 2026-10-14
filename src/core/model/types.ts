@@ -3,14 +3,21 @@ import type { Point } from '../geometry/point.ts';
 export type Id = string;
 
 /**
- * A flap: one leaf of the tree. Its square is centred on the flap tip (x, y)
- * and has half-side r, so the side length is twice the flap length.
+ * A flap: one leaf of the tree. Its tip is the rectangle from (x, y) to
+ * (x + w, y + h); a plain flap has w = h = 0, a point tip. The flap claims
+ * every point within r of its tip (L-infinity), so a plain flap is a square
+ * of side 2r centred on the tip and a rectangular flap is a box of
+ * (w + 2r) x (h + 2r).
  */
 export interface Flap {
   readonly id: Id;
+  /** Top-left corner of the tip. */
   readonly x: number;
   readonly y: number;
-  /** Flap length in grid units (the square's half-side). */
+  /** Tip width and height in grid units (0 for a point tip). */
+  readonly w: number;
+  readonly h: number;
+  /** Flap length in grid units (the distance from the tip to the box's edge). */
   readonly r: number;
   readonly label: string;
   /** Book-symmetry partner. Equal to `id` when the flap sits on the axis. */
@@ -37,7 +44,8 @@ export interface SymmetrySettings {
   readonly book: boolean;
 }
 
-export const SCHEMA_VERSION = 1;
+/** 2: flaps gained tip width and height (w, h). Version 1 files load with w = h = 0. */
+export const SCHEMA_VERSION = 2;
 
 /** Everything a user authors. The tree and crease pattern are derived from this. */
 export interface Design {

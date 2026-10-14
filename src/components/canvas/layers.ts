@@ -7,6 +7,7 @@ import { svg, nothing, type SVGTemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import type { Analysis } from '../../core/analyze.ts';
 import type { Crease } from '../../core/creases/types.ts';
+import { flapRect, shapePolygon, sideNormals, tipCenter } from '../../core/geometry/flap-shape.ts';
 import { flapName, riverName } from '../../core/model/naming.ts';
 import type { Design, Flap, River } from '../../core/model/types.ts';
 import { flapHandles, riverHandles } from '../../editor/handles.ts';
@@ -45,7 +46,7 @@ function partnerOf(sel: Selection | null, design: Design): string | null {
   return e?.mirrorId && e.mirrorId !== e.id ? e.mirrorId : null;
 }
 
-/** Flap squares and river strips. */
+/** Flap shapes (squares, or squares cut by circle tangents) and river strips. */
 export function elementsLayer(state: AppState, flapsInError: ReadonlySet<string>): Layer {
   const { design, analysis, ui } = state;
   const sel = ui.selection;
@@ -62,7 +63,14 @@ export function elementsLayer(state: AppState, flapsInError: ReadonlySet<string>
         partner === f.id ? 'partner' : '',
         flapsInError.has(f.id) ? 'error' : '',
       ].join(' ');
-      return svg`<rect class=${cls} x=${f.x - f.r} y=${f.y - f.r} width=${f.r * 2} height=${f.r * 2}></rect>`;
+      const tangents = analysis.tree.circleNormals.get(f.id);
+      if (tangents) {
+        // Squares cut by tangent sides where the flap only fits as a circle.
+        const corners = shapePolygon(f, f.r, sideNormals(tangents));
+        return svg`<polygon class=${cls} points=${corners.map((p) => `${p.x},${p.y}`).join(' ')}></polygon>`;
+      }
+      const box = flapRect(f);
+      return svg`<rect class=${cls} x=${box.x0} y=${box.y0} width=${box.x1 - box.x0} height=${box.y1 - box.y0}></rect>`;
     })}
     ${repeat(analysis.rivers, (g) => g.river.id, (g) => {
       const cls = ['river', isSelected(sel, 'river', g.river.id) ? 'selected' : '', partner === g.river.id ? 'partner' : ''].join(' ');
@@ -75,13 +83,13 @@ export function elementsLayer(state: AppState, flapsInError: ReadonlySet<string>
   </g>`;
 }
 
-/** The circle each flap claims in circle packing: centred on the tip, radius = flap length. */
+/** The circle each flap claims in circle packing: every point within the flap length of its tip (a rounded box for a rectangular tip). */
 export function circlesLayer(state: AppState): Layer {
   const sel = state.ui.selection;
   return svg`<g class="flap-circles">
     ${repeat(state.design.flaps, (f) => f.id, (f) => {
       const cls = isSelected(sel, 'flap', f.id) ? 'flap-circle selected' : 'flap-circle';
-      return svg`<circle class=${cls} cx=${f.x} cy=${f.y} r=${f.r}></circle>`;
+      return svg`<rect class=${cls} x=${f.x - f.r} y=${f.y - f.r} width=${f.w + 2 * f.r} height=${f.h + 2 * f.r} rx=${f.r}></rect>`;
     })}
   </g>`;
 }
@@ -128,11 +136,13 @@ export function labelsLayer(state: AppState, px: number): Layer {
   return svg`<g class="labels">
     ${repeat(design.flaps, (f) => f.id, (f) => {
       const selected = isSelected(sel, 'flap', f.id);
-      const name = `${flapName(design, f.id)}  ${f.r}`;
+      const name = `${flapName(design, f.id)}  ${f.r}${f.w || f.h ? `  (${f.w} × ${f.h} tip)` : ''}`;
+      const c = tipCenter(f);
       return svg`<g class=${selected ? 'tip selected' : 'tip'}>
-        <circle cx=${f.x} cy=${f.y} r=${(selected ? 5 : 4) * px}></circle>
-        ${rootFlap === f.id ? svg`<circle class="root-ring" cx=${f.x} cy=${f.y} r=${8 * px}></circle>` : nothing}
-        <text x=${f.x + 7 * px} y=${f.y - 7 * px} font-size=${fs}>${name}</text>
+        ${f.w || f.h ? svg`<rect class="tip-shape" x=${f.x} y=${f.y} width=${f.w} height=${f.h}></rect>` : nothing}
+        <circle cx=${c.x} cy=${c.y} r=${(selected ? 5 : 4) * px}></circle>
+        ${rootFlap === f.id ? svg`<circle class="root-ring" cx=${c.x} cy=${c.y} r=${8 * px}></circle>` : nothing}
+        <text x=${f.x + f.w + 7 * px} y=${f.y - 7 * px} font-size=${fs}>${name}</text>
       </g>`;
     })}
     ${repeat(design.rivers, (r) => r.id, (r) => {

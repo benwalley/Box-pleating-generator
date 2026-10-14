@@ -54,6 +54,17 @@ export function analyze(design: Design): Analysis {
     });
   }
 
+  for (const f of design.flaps) {
+    if (f.w > 0 && f.h > 0) {
+      issues.push({
+        code: 'flat-top',
+        severity: 'info',
+        message: `${elementName(design, { kind: 'flap', id: f.id })} has a ${f.w} × ${f.h} tip, which stays flat like the lid of a box, so the creases around it don't fold flat. Set its width or height to 0 for a flat-folding flap.`,
+        refs: [{ kind: 'flap', id: f.id }],
+      });
+    }
+  }
+
   const treeResult = inferTree(design, rivers);
   issues.push(...treeResult.issues);
 
@@ -62,7 +73,7 @@ export function analyze(design: Design): Analysis {
   let foldability: FoldabilityReport | null = null;
 
   if (!blocked && design.flaps.length > 0) {
-    pattern = generateCreases(design, rivers);
+    pattern = generateCreases(design, rivers, treeResult.tree.circleNormals);
     foldability = checkLocalFoldability(pattern.creases, n);
 
     const conflicts = pattern.creases.filter((c) => c.kind === 'conflict');
@@ -94,8 +105,8 @@ export function analyze(design: Design): Analysis {
 
   const flapCounts = { corner: 0, edge: 0, middle: 0 };
   for (const f of design.flaps) {
-    const onX = f.x === 0 || f.x === n;
-    const onY = f.y === 0 || f.y === n;
+    const onX = f.x === 0 || f.x + f.w === n;
+    const onY = f.y === 0 || f.y + f.h === n;
     if (onX && onY) flapCounts.corner++;
     else if (onX || onY) flapCounts.edge++;
     else flapCounts.middle++;

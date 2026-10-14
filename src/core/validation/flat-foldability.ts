@@ -27,6 +27,7 @@ const TAU = Math.PI * 2;
 export function checkLocalFoldability(creases: readonly Crease[], gridSize: number): FoldabilityReport {
   const vertices = new Map<string, { x: number; y: number; rays: Array<{ angle: number; mv: Crease['mv'] }> }>();
   const addRay = (x: number, y: number, angle: number, mv: Crease['mv']) => {
+    // Crease endpoints come from one canonical point per vertex, so exact keys are safe.
     const key = `${x},${y}`;
     let v = vertices.get(key);
     if (!v) {

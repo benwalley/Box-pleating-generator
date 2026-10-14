@@ -27,7 +27,8 @@ const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : 
 
 function parseFlap(v: unknown, i: number): Flap {
   if (!isObj(v) || !num(v.x) || !num(v.y) || !num(v.r)) throw new Error(`Flap ${i + 1} is missing x, y or r.`);
-  return { id: str(v.id, `f_import${i}`), x: v.x, y: v.y, r: v.r, label: str(v.label), mirrorId: null };
+  const size = (k: 'w' | 'h') => (num(v[k]) ? v[k] : 0);
+  return { id: str(v.id, `f_import${i}`), x: v.x, y: v.y, w: size('w'), h: size('h'), r: v.r, label: str(v.label), mirrorId: null };
 }
 
 function parseRiver(v: unknown, i: number): River {

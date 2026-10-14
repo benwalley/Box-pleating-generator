@@ -212,6 +212,15 @@ export const canvasStyles = css`
   .tip.selected circle {
     fill: var(--accent-ink);
   }
+  .tip .tip-shape {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .tip.selected .tip-shape {
+    stroke: var(--accent-ink);
+  }
   .tip .root-ring {
     fill: none;
     stroke: var(--accent);

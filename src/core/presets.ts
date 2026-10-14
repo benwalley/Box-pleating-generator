@@ -12,7 +12,7 @@ export interface Preset {
 }
 
 let seq = 0;
-const flap = (x: number, y: number, r: number, label = ''): Flap => ({ id: `f_p${++seq}`, x, y, r, label, mirrorId: null });
+const flap = (x: number, y: number, r: number, label = '', w = 0, h = 0): Flap => ({ id: `f_p${++seq}`, x, y, w, h, r, label, mirrorId: null });
 const river = (points: Point[], width: number, label = ''): River => ({ id: `r_p${++seq}`, points, width, label, mirrorId: null });
 
 export const PRESETS: readonly Preset[] = [
@@ -75,6 +75,26 @@ export const PRESETS: readonly Preset[] = [
             flap(16, 16, 4, 'Back leg'),
           ],
           rivers: [river([{ x: 0, y: 8 }, { x: 16, y: 8 }], 8, 'Body')],
+        }),
+      ),
+  },
+  {
+    id: 'box-body',
+    name: 'Box body',
+    description: 'A wide body flap with an 8-unit tip, and four legs in the corners. Passes all checks.',
+    build: () =>
+      linkMirrors(
+        createDesign({
+          name: 'Box body',
+          gridSize: 16,
+          symmetry: { book: true },
+          flaps: [
+            flap(4, 8, 4, 'Body', 8, 0),
+            flap(0, 0, 4, 'Front leg'),
+            flap(16, 0, 4, 'Front leg'),
+            flap(0, 16, 4, 'Back leg'),
+            flap(16, 16, 4, 'Back leg'),
+          ],
         }),
       ),
   },

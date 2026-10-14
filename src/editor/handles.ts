@@ -2,6 +2,7 @@
  * Positions of the drag handles shown on the selected element. Shared by the
  * renderer and the hit tester so they always agree.
  */
+import { flapRect } from '../core/geometry/flap-shape.ts';
 import { add, scale, sub, type Point } from '../core/geometry/point.ts';
 import { direction, normalA } from '../core/geometry/polyline.ts';
 import type { Flap, River } from '../core/model/types.ts';
@@ -13,17 +14,20 @@ export interface FlapHandle {
   readonly cursor: 'nwse-resize' | 'nesw-resize' | 'ew-resize' | 'ns-resize';
 }
 
+/** Corners and edge midpoints of the flap's box. */
 export function flapHandles(f: Flap): FlapHandle[] {
-  const { x, y, r } = f;
+  const { x0, y0, x1, y1 } = flapRect(f);
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
   return [
-    { x: x - r, y: y - r, cursor: 'nwse-resize' },
-    { x: x + r, y: y + r, cursor: 'nwse-resize' },
-    { x: x + r, y: y - r, cursor: 'nesw-resize' },
-    { x: x - r, y: y + r, cursor: 'nesw-resize' },
-    { x: x - r, y, cursor: 'ew-resize' },
-    { x: x + r, y, cursor: 'ew-resize' },
-    { x, y: y - r, cursor: 'ns-resize' },
-    { x, y: y + r, cursor: 'ns-resize' },
+    { x: x0, y: y0, cursor: 'nwse-resize' },
+    { x: x1, y: y1, cursor: 'nwse-resize' },
+    { x: x1, y: y0, cursor: 'nesw-resize' },
+    { x: x0, y: y1, cursor: 'nesw-resize' },
+    { x: x0, y: cy, cursor: 'ew-resize' },
+    { x: x1, y: cy, cursor: 'ew-resize' },
+    { x: cx, y: y0, cursor: 'ns-resize' },
+    { x: cx, y: y1, cursor: 'ns-resize' },
   ];
 }
 

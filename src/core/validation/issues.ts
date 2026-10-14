@@ -20,6 +20,8 @@ export type IssueCode =
   | 'river-unattached'
   | 'disconnected'
   | 'path-too-short'
+  | 'circle-packed'
+  | 'flat-top'
   | 'redundant-node'
   | 'parity-conflict'
   | 'ambiguous-region'

@@ -25,10 +25,14 @@ export function createDesign(partial: Partial<Design> = {}): Design {
 export const symmetryAxis = (design: Design): number => design.gridSize / 2;
 
 export function normalizeFlap(f: Flap, gridSize: number): Flap {
+  const w = clamp(Math.round(f.w ?? 0), 0, gridSize);
+  const h = clamp(Math.round(f.h ?? 0), 0, gridSize);
   return {
     ...f,
-    x: clamp(Math.round(f.x), 0, gridSize),
-    y: clamp(Math.round(f.y), 0, gridSize),
+    w,
+    h,
+    x: clamp(Math.round(f.x), 0, gridSize - w),
+    y: clamp(Math.round(f.y), 0, gridSize - h),
     r: clamp(Math.round(f.r), 1, gridSize),
   };
 }

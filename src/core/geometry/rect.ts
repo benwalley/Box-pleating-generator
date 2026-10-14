@@ -52,3 +52,9 @@ export const containsOpen = (r: Rect, p: Point): boolean =>
 
 export const containsClosed = (r: Rect, p: Point): boolean =>
   p.x >= r.x0 - EPS && p.x <= r.x1 + EPS && p.y >= r.y0 - EPS && p.y <= r.y1 + EPS;
+
+/** The point of a closed rectangle nearest to p. */
+export const closestPointInRect = (r: Rect, p: Point): Point => ({
+  x: Math.min(r.x1, Math.max(r.x0, p.x)),
+  y: Math.min(r.y1, Math.max(r.y0, p.y)),
+});

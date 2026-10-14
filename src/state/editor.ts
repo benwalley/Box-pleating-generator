@@ -187,6 +187,11 @@ export class EditorController {
     this.apply((d) => ops.resizeFlap(d, id, r));
   }
 
+  /** Set the tip rectangle: top-left corner and size (0 x 0 for a square flap). */
+  setFlapTip(id: Id, x: number, y: number, w: number, h: number): void {
+    this.apply((d) => ops.setFlapTip(d, id, x, y, w, h));
+  }
+
   setFlapLabel(id: Id, label: string): void {
     this.apply((d) => ops.setFlapLabel(d, id, label));
   }

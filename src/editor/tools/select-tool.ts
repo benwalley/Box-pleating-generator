@@ -3,14 +3,16 @@
  * Dragging empty paper pans the view.
  */
 import * as ops from '../../core/model/operations.ts';
-import type { Design, Id } from '../../core/model/types.ts';
+import { tipCenter, tipCheb } from '../../core/geometry/flap-shape.ts';
+import type { Design, Flap, Id } from '../../core/model/types.ts';
 import { widthFromHandle } from '../handles.ts';
 import type { Hit } from '../hit-test.ts';
 import { PanDrag, type Tool, type ToolContext, type ToolPointer } from './tool.ts';
 
 type Drag =
   | { kind: 'move-flap'; id: Id; startX: number; startY: number; fx: number; fy: number }
-  | { kind: 'resize-flap'; id: Id; fx: number; fy: number }
+  | { kind: 'resize-flap'; id: Id; tip: Flap }
+  | { kind: 'stretch-flap'; id: Id; tip: Flap; sx: -1 | 0 | 1; sy: -1 | 0 | 1 }
   | { kind: 'move-river'; id: Id; startX: number; startY: number }
   | { kind: 'river-segment'; id: Id; index: number; horizontal: boolean; startX: number; startY: number }
   | { kind: 'river-end'; id: Id; index: number; horizontal: boolean; startX: number; startY: number }
@@ -20,7 +22,7 @@ export class SelectTool implements Tool {
   readonly id = 'select' as const;
   readonly label = 'Select';
   readonly shortcut = 'V';
-  readonly hint = 'Drag to move. Drag the handles of a selected flap or river to resize it.';
+  readonly hint = 'Drag to move. Drag the handles of a selected flap or river to resize it; Shift-drag a flap handle to stretch it into a box.';
 
   private drag: Drag | null = null;
   private readonly pan = new PanDrag();
@@ -48,7 +50,13 @@ export class SelectTool implements Tool {
       }
       case 'flap-resize': {
         const f = design.flaps.find((q) => q.id === hit.id)!;
-        return { kind: 'resize-flap', id: f.id, fx: f.x, fy: f.y };
+        if (!p.shiftKey) return { kind: 'resize-flap', id: f.id, tip: f };
+        // Shift: stretch the side (or corner) being dragged, keeping the flap length.
+        const c = tipCenter(f);
+        const side = (v: number, mid: number): -1 | 1 => (v < mid ? -1 : 1);
+        const sx = hit.cursor === 'ns-resize' ? 0 : side(p.x, c.x);
+        const sy = hit.cursor === 'ew-resize' ? 0 : side(p.y, c.y);
+        return { kind: 'stretch-flap', id: f.id, tip: f, sx, sy };
       }
       case 'river-body':
         return { kind: 'move-river', id: hit.id, startX: p.x, startY: p.y };
@@ -71,8 +79,19 @@ export class SelectTool implements Tool {
         editor.previewGesture((base) => ops.moveFlap(base, d.id, d.fx + Math.round(p.x - d.startX), d.fy + Math.round(p.y - d.startY)));
         break;
       case 'resize-flap':
-        editor.previewGesture((base) => ops.resizeFlap(base, d.id, Math.max(Math.abs(p.x - d.fx), Math.abs(p.y - d.fy))));
+        editor.previewGesture((base) => ops.resizeFlap(base, d.id, tipCheb(p, d.tip)));
         break;
+      case 'stretch-flap': {
+        // The dragged edge of the box follows the pointer; the opposite edge stays put.
+        const { x, y, w, h, r } = d.tip;
+        let [x0, x1, y0, y1] = [x, x + w, y, y + h];
+        if (d.sx > 0) x1 = Math.max(x0, Math.round(p.x - r));
+        if (d.sx < 0) x0 = Math.min(x1, Math.round(p.x + r));
+        if (d.sy > 0) y1 = Math.max(y0, Math.round(p.y - r));
+        if (d.sy < 0) y0 = Math.min(y1, Math.round(p.y + r));
+        editor.previewGesture((base) => ops.setFlapTip(base, d.id, x0, y0, x1 - x0, y1 - y0));
+        break;
+      }
       case 'move-river':
         editor.previewGesture((base) => ops.translateRiver(base, d.id, p.x - d.startX, p.y - d.startY));
         break;

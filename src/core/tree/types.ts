@@ -1,3 +1,4 @@
+import type { Point } from '../geometry/point.ts';
 import type { PortKey } from '../model/ports.ts';
 import type { Id } from '../model/types.ts';
 
@@ -36,6 +37,21 @@ export interface TreeModel {
   readonly hubOfFlap: ReadonlyMap<Id, NodeKey>;
   /** Number of flap pairs whose path condition holds with equality. */
   readonly activePaths: number;
+  /** Flap pairs that only fit as circles (Euclidean, not Chebyshev, path condition). */
+  readonly circlePairs: readonly CirclePair[];
+  /** Extra tangent-side normals per flap, from circle pairs and river corners. */
+  readonly circleNormals: ReadonlyMap<Id, readonly Point[]>;
+}
+
+export interface CirclePair {
+  readonly a: Id;
+  readonly b: Id;
+  /** Euclidean distance between the tips. */
+  readonly distance: number;
+  /** r_a + r_b + tree distance between their hubs. */
+  readonly need: number;
+  /** True when the circles' path condition holds with equality. */
+  readonly active: boolean;
 }
 
 export const nodeDisplayName = (n: TreeNode): string => n.label || n.autoName;

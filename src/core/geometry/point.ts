@@ -12,6 +12,9 @@ export const pt = (x: number, y: number): Point => ({ x, y });
 export const cheb = (a: Point, b: Point): number =>
   Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
+/** Euclidean distance: the metric of general circle packing. */
+export const euclid = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y);
+
 export const samePoint = (a: Point, b: Point, eps = EPS): boolean =>
   Math.abs(a.x - b.x) <= eps && Math.abs(a.y - b.y) <= eps;
 
@@ -21,6 +24,14 @@ export const scale = (a: Point, k: number): Point => ({ x: a.x * k, y: a.y * k }
 export const dot = (a: Point, b: Point): number => a.x * b.x + a.y * b.y;
 /** z-component of the 2D cross product. */
 export const cross = (a: Point, b: Point): number => a.x * b.y - a.y * b.x;
+
+export const length = (a: Point): number => Math.hypot(a.x, a.y);
+export const normalize = (a: Point): Point => {
+  const l = length(a);
+  return l > EPS ? { x: a.x / l, y: a.y / l } : { x: 0, y: 0 };
+};
+/** Rotate 90 degrees (counterclockwise in math coordinates). */
+export const perp = (a: Point): Point => ({ x: -a.y, y: a.x });
 
 /** Mirror across the vertical line x = axis (book symmetry). */
 export const mirrorX = (p: Point, axis: number): Point => ({ x: 2 * axis - p.x, y: p.y });

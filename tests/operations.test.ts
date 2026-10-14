@@ -13,7 +13,9 @@ import {
   translateRiver,
   moveRiverVertices,
   setNodeLabel,
+  setFlapTip,
 } from '../src/core/model/operations.ts';
+import { parseDesign, serializeDesign } from '../src/core/model/serialize.ts';
 import { unpairedElements } from '../src/core/symmetry/book.ts';
 
 const sym = () => createDesign({ gridSize: 12, symmetry: { book: true } });
@@ -101,4 +103,35 @@ test('node labels are stored on one port only', () => {
   assert.deepEqual(d.nodeLabels, { [port]: 'Body' });
   d = setNodeLabel(d, [port], '');
   assert.deepEqual(d.nodeLabels, {});
+});
+
+test('a rectangular tip mirrors as a rectangle', () => {
+  const { design, id } = addFlap(sym(), 1, 3, 2);
+  const d = setFlapTip(design, id!, 1, 3, 3, 0);
+  const [a, b] = d.flaps;
+  assert.deepEqual([a!.x, a!.w], [1, 3]);
+  // The tip 1..4 mirrors to 8..11 about x = 6.
+  assert.deepEqual([b!.x, b!.y, b!.w, b!.h], [8, 3, 3, 0]);
+  const moved = moveFlap(d, id!, 2, 3);
+  assert.equal(moved.flaps[1]!.x, 7);
+});
+
+test('a flap on the axis widens symmetrically', () => {
+  const { design, id } = addFlap(sym(), 6, 3, 2);
+  // Width 3 would leave it off-centre on a 12 grid, so it rounds up to 4.
+  const d = setFlapTip(design, id!, 6, 3, 3, 0);
+  const f = d.flaps[0]!;
+  assert.deepEqual([f.x, f.w], [4, 4]);
+  assert.equal(f.mirrorId, f.id);
+});
+
+test('tip size is saved, and older files load with point tips', () => {
+  const { design, id } = addFlap(createDesign({ gridSize: 12 }), 2, 3, 2);
+  const d = setFlapTip(design, id!, 2, 3, 4, 1);
+  const back = parseDesign(serializeDesign(d));
+  assert.ok(back.ok);
+  assert.deepEqual([back.design.flaps[0]!.w, back.design.flaps[0]!.h], [4, 1]);
+  const v1 = parseDesign(JSON.stringify({ schemaVersion: 1, gridSize: 8, flaps: [{ id: 'f1', x: 0, y: 0, r: 4 }], rivers: [] }));
+  assert.ok(v1.ok);
+  assert.deepEqual([v1.design.flaps[0]!.w, v1.design.flaps[0]!.h], [0, 0]);
 });

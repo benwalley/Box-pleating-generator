@@ -170,9 +170,14 @@ export class BpInspector extends LitElement {
     const { design, analysis } = this.state;
     const n = design.gridSize;
     const name = flapName(design, f.id);
-    const onX = f.x === 0 || f.x === n;
-    const onY = f.y === 0 || f.y === n;
+    const onX = f.x === 0 || f.x + f.w === n;
+    const onY = f.y === 0 || f.y + f.h === n;
     const type = onX && onY ? 'Corner flap' : onX || onY ? 'Edge flap' : 'Middle flap';
+    const circleSides = analysis.tree.circleNormals.get(f.id)?.length ?? 0;
+    const rectangular = f.w > 0 || f.h > 0;
+    const shape = circleSides
+      ? `${rectangular ? 'Box' : 'Square'} cut by ${circleSides} tangent side${circleSides === 1 ? '' : 's'} (circle packing)`
+      : `${rectangular ? 'Box' : 'Square'}, ${f.w + f.r * 2} × ${f.h + f.r * 2}`;
     const tipKey = `tip:${f.id}`;
     const isRoot = analysis.tree.rootKey === tipKey;
     const lockX = design.symmetry.book && f.mirrorId === f.id;
@@ -181,10 +186,17 @@ export class BpInspector extends LitElement {
       <div class="section-body">
         ${this.labelField(f.label, `F${design.flaps.indexOf(f) + 1}`, (v) => this.editor.setFlapLabel(f.id, v))}
         <div class="field">
-          <span class="label">Tip</span>
+          <span class="label">${rectangular ? 'Tip corner' : 'Tip'}</span>
           <div class="xy">
-            <bp-number-field label="x" .value=${f.x} min="0" max=${n} ?disabled=${lockX} @value-change=${(e: CustomEvent<number>) => this.editor.moveFlap(f.id, e.detail, f.y)}></bp-number-field>
-            <bp-number-field label="y" .value=${f.y} min="0" max=${n} @value-change=${(e: CustomEvent<number>) => this.editor.moveFlap(f.id, f.x, e.detail)}></bp-number-field>
+            <bp-number-field label="x" .value=${f.x} min="0" max=${n - f.w} ?disabled=${lockX} @value-change=${(e: CustomEvent<number>) => this.editor.moveFlap(f.id, e.detail, f.y)}></bp-number-field>
+            <bp-number-field label="y" .value=${f.y} min="0" max=${n - f.h} @value-change=${(e: CustomEvent<number>) => this.editor.moveFlap(f.id, f.x, e.detail)}></bp-number-field>
+          </div>
+        </div>
+        <div class="field">
+          <span class="label" title="Width and height of the tip. 0 × 0 is a square flap; a width or height makes a rectangular box.">Tip size</span>
+          <div class="xy">
+            <bp-number-field label="w" .value=${f.w} min="0" max=${n} @value-change=${(e: CustomEvent<number>) => this.editor.setFlapTip(f.id, f.x, f.y, e.detail, f.h)}></bp-number-field>
+            <bp-number-field label="h" .value=${f.h} min="0" max=${n} @value-change=${(e: CustomEvent<number>) => this.editor.setFlapTip(f.id, f.x, f.y, f.w, e.detail)}></bp-number-field>
           </div>
         </div>
         <div class="field">
@@ -192,8 +204,8 @@ export class BpInspector extends LitElement {
           <bp-number-field label="Flap length" .value=${f.r} min="1" max=${n} @value-change=${(e: CustomEvent<number>) => this.editor.resizeFlap(f.id, e.detail)}></bp-number-field>
         </div>
         <dl class="facts">
-          <dt>Square</dt>
-          <dd>${f.r * 2} × ${f.r * 2}</dd>
+          <dt>Shape</dt>
+          <dd>${shape}</dd>
           <dt>Hangs from</dt>
           <dd>${this.hubName(analysis.tree.hubOfFlap.get(f.id))}</dd>
           <dt>Symmetry</dt>
