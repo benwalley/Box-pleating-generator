@@ -238,10 +238,54 @@ export function deleteElements(d: Design, refs: readonly ElementRef[]): Design {
   });
 }
 
+/**
+ * Change the paper size, scaling every flap and river with it so the layout
+ * keeps its position and proportions. Coordinates are scaled about the centre
+ * of the paper and rounded symmetrically, so mirror partners stay mirrored.
+ */
 export function setGridSize(d: Design, size: number): Design {
   const gridSize = clamp(Math.round(size), MIN_GRID, MAX_GRID);
   if (gridSize === d.gridSize) return d;
-  return linkMirrors(normalizeDesign({ ...d, gridSize }));
+  const k = gridSize / d.gridSize;
+  const oldMid = d.gridSize / 2;
+  const newMid = gridSize / 2;
+  // Round half away from zero (about the centre) to an integer, or to a half-integer.
+  const roundSym = (v: number, half = false): number => {
+    const m = Math.abs(v) + 1e-9;
+    const r = half ? Math.round(m - 0.5) + 0.5 : Math.round(m);
+    return v < 0 ? -r : r;
+  };
+  const scaleCoord = (v: number, half = false): number => newMid + roundSym((v - oldMid) * k, half);
+  const scaleLength = (v: number): number => Math.max(1, Math.round(v * k));
+
+  const flaps = d.flaps.map((f) => {
+    const x0 = scaleCoord(f.x);
+    const y0 = scaleCoord(f.y);
+    return { ...f, x: x0, y: y0, w: scaleCoord(f.x + f.w) - x0, h: scaleCoord(f.y + f.h) - y0, r: scaleLength(f.r) };
+  });
+
+  const rivers = d.rivers.map((r) => {
+    let width = scaleLength(r.width);
+    const pts = r.points;
+    const n = pts.length;
+    // A river running along the axis needs an even width to keep its banks on the grid.
+    const alongAxis = pts.some((p, i) => i > 0 && Math.abs(p.x - oldMid) <= EPS && Math.abs(pts[i - 1]!.x - oldMid) <= EPS);
+    if (alongAxis && width % 2 !== 0) width += r.width * k > width || width === 1 ? 1 : -1;
+    const half = width % 2 !== 0;
+    // Interior coordinates sit on the width's lattice; an end's coordinate along the river is an integer.
+    const points = pts.map((p, i) => {
+      const end = i === 0 || i === n - 1;
+      const other = i === 0 ? pts[1] : pts[n - 2];
+      const horizontal = !!other && Math.abs(other.y - p.y) <= Math.abs(other.x - p.x);
+      return {
+        x: scaleCoord(p.x, half && !(end && horizontal)),
+        y: scaleCoord(p.y, half && !(end && !horizontal)),
+      };
+    });
+    return { ...r, width, points };
+  });
+
+  return linkMirrors(normalizeDesign({ ...d, gridSize, flaps, rivers }));
 }
 
 export function setBookSymmetry(d: Design, on: boolean): Design {

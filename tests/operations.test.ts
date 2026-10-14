@@ -9,6 +9,7 @@ import {
   moveFlap,
   resizeFlap,
   setBookSymmetry,
+  setGridSize,
   setRiverWidth,
   translateRiver,
   moveRiverVertices,
@@ -134,4 +135,19 @@ test('tip size is saved, and older files load with point tips', () => {
   const v1 = parseDesign(JSON.stringify({ schemaVersion: 1, gridSize: 8, flaps: [{ id: 'f1', x: 0, y: 0, r: 4 }], rivers: [] }));
   assert.ok(v1.ok);
   assert.deepEqual([v1.design.flaps[0]!.w, v1.design.flaps[0]!.h], [0, 0]);
+});
+
+test('changing the grid size scales the layout and keeps mirror pairs', () => {
+  let d = createDesign({ gridSize: 16, symmetry: { book: true } });
+  d = addFlap(d, 4, 4, 2).design;
+  d = addFlap(d, 8, 12, 4).design;
+  d = addRiver(d, [{ x: 0, y: 8 }, { x: 16, y: 8 }], 2).design;
+  d = setGridSize(d, 32);
+  assert.equal(d.gridSize, 32);
+  assert.deepEqual(d.flaps.map((f) => [f.x, f.y, f.r]), [[8, 8, 4], [24, 8, 4], [16, 24, 8]]);
+  assert.ok(d.flaps.every((f) => f.mirrorId));
+  assert.deepEqual([d.rivers[0]!.width, d.rivers[0]!.points], [4, [{ x: 0, y: 16 }, { x: 32, y: 16 }]]);
+  d = setGridSize(d, 12);
+  assert.deepEqual(d.flaps.map((f) => [f.x, f.y, f.r]), [[3, 3, 2], [9, 3, 2], [6, 9, 3]]);
+  assert.ok(d.flaps.every((f) => f.mirrorId));
 });

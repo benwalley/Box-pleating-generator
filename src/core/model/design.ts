@@ -4,7 +4,9 @@ import { portOwner } from './ports.ts';
 import { SCHEMA_VERSION, type Design, type Flap, type River } from './types.ts';
 
 export const MIN_GRID = 2;
-export const MAX_GRID = 96;
+export const MAX_GRID = 128;
+/** Paper sizes offered in the grid size picker. */
+export const GRID_SIZES = [8, 12, 16, 24, 32, 48, 64, 128] as const;
 export const DEFAULT_GRID = 16;
 
 export function createDesign(partial: Partial<Design> = {}): Design {

@@ -3,7 +3,7 @@
  * nothing selected) the design itself.
  */
 import { LitElement, html, css, nothing } from 'lit';
-import { MAX_GRID, MIN_GRID } from '../core/model/design.ts';
+import { GRID_SIZES } from '../core/model/design.ts';
 import { flapName, riverName } from '../core/model/naming.ts';
 import { riverPort } from '../core/model/ports.ts';
 import type { Flap, River } from '../core/model/types.ts';
@@ -314,8 +314,16 @@ export class BpInspector extends LitElement {
           />
         </div>
         <div class="field">
-          <label>Grid</label>
-          <bp-number-field label="Grid size" .value=${design.gridSize} min=${MIN_GRID} max=${MAX_GRID} @value-change=${(e: CustomEvent<number>) => this.editor.setGridSize(e.detail)}></bp-number-field>
+          <label for="grid-size">Grid</label>
+          <select
+            id="grid-size"
+            .value=${String(design.gridSize)}
+            @change=${(e: Event) => this.editor.setGridSize(Number((e.target as HTMLSelectElement).value))}
+            @keydown=${(e: KeyboardEvent) => e.stopPropagation()}
+          >
+            ${(GRID_SIZES as readonly number[]).includes(design.gridSize) ? nothing : html`<option value=${design.gridSize} selected>${design.gridSize} × ${design.gridSize}</option>`}
+            ${GRID_SIZES.map((n) => html`<option value=${n} ?selected=${n === design.gridSize}>${n} × ${n}</option>`)}
+          </select>
         </div>
         <div class="field">
           <span class="label">Symmetry</span>

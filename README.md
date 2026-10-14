@@ -114,7 +114,7 @@ Shortcuts are ignored while you are typing in a text or number field. Space and 
 
 **Inspector** shows the selected item:
 
-- **Nothing selected:** design name, grid size, book symmetry switch (plus "Make symmetric" if some elements lack a mirror), default width for new rivers, and counts (flaps by corner/edge/middle, drawn vs implied rivers, active paths).
+- **Nothing selected:** design name, grid size (a dropdown of 8, 12, 16, 24, 32, 48, 64 or 128; changing it scales the layout to match), book symmetry switch (plus "Make symmetric" if some elements lack a mirror), default width for new rivers, and counts (flaps by corner/edge/middle, drawn vs implied rivers, active paths).
 - **Flap:** label, tip x/y (the tip's top-left corner for a box), tip size w × h (0 × 0 is a square flap; see [3.11](#311-rectangular-flaps-boxes)), length, shape (square or box with its outer size, cut by tangent sides when it is circle-packed), which tree node it hangs from, its symmetry status, "Make root", Delete. The x field is locked for a flap on the symmetry axis.
 - **River:** label, width, which node each bank joins (clickable), number of bends, symmetry status, Delete.
 - **Tree node:** label, number of edges, attached flaps and rivers, "Make root" or (if it is the root) "Choose root automatically".
@@ -376,7 +376,7 @@ Because Node only **strips** types, code in `src/core/` must avoid TypeScript fe
 | File | Contents |
 | --- | --- |
 | `types.ts` | `Design`, `Flap`, `River`, `SymmetrySettings`, `ElementRef`, `SCHEMA_VERSION`. |
-| `design.ts` | `createDesign`, `normalizeDesign` / `normalizeFlap` / `normalizeRiver` (clamp to grid, snap rivers, drop dangling references), `symmetryAxis`, grid limits (`MIN_GRID = 2`, `MAX_GRID = 96`, `DEFAULT_GRID = 16`). |
+| `design.ts` | `createDesign`, `normalizeDesign` / `normalizeFlap` / `normalizeRiver` (clamp to grid, snap rivers, drop dangling references), `symmetryAxis`, grid limits (`MIN_GRID = 2`, `MAX_GRID = 128`, `DEFAULT_GRID = 16`) and the picker's `GRID_SIZES`. |
 | `ids.ts` | `createId('f' \| 'r')`: short unique ids like `f_lx3k2a7`. |
 | `ports.ts` | Port keys (`flap:<id>`, `tip:<id>`, `river:<id>:a\|b`), `parsePort`, `portOwner`. |
 | `naming.ts` | Display names (`flapName` → label or `F1`, `F2`…; `riverName` → label or `R1`…), `findFlap`, `findRiver`. |
@@ -472,7 +472,7 @@ interface River {
 interface Design {
   schemaVersion: 2;   // 2 added flap w and h
   name: string;
-  gridSize: number;    // paper is gridSize × gridSize units, 2..96
+  gridSize: number;    // paper is gridSize × gridSize units, 2..128
   flaps: Flap[];
   rivers: River[];
   symmetry: { book: boolean };
@@ -719,7 +719,7 @@ A ridge's elevation *e* is the lower elevation of its two ends relative to the o
 | `setRiverWidth` | Keeps **bank A** fixed by offsetting the centerline by `(oldWidth − newWidth) / 2`. Exception: a river lying **along the axis** (mirrors in place) widens evenly from its centre, in **steps of 2**, so both banks stay on grid lines. |
 | `normalizeRiverById` | Tidies a river after a drag; deletes it if it collapses. |
 | `deleteElements` | Removes elements; with symmetry on, partners go too. |
-| `setGridSize` | Clamps 2–96, normalizes everything to the new grid, relinks mirrors. |
+| `setGridSize` | Clamps 2–128 and scales every flap and river by new size / old size about the paper's centre, rounding symmetrically so mirror pairs survive (a river along the axis is kept at an even width). Then normalizes and relinks mirrors. |
 | `setBookSymmetry` | Turns symmetry on (linking existing mirrors) or off (clearing links). |
 | `makeSymmetric` | Unpaired elements on the left half are copied to the right; unpaired elements on the right half are removed. Undoable. |
 | `setNodeLabel` / `setRootPort` / `setName` | See [7.3](#73-ports-and-stable-identity). |
